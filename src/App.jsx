@@ -8,7 +8,7 @@ const C = {
 };
 
 // ── Exercise Pools ────────────────────────────────────────────────────────────
-const AEROBIC_POOL = ["Jumping Jacks","High Knees","Stair Jumps","Side Skaters","Squat Jumps","Mountain Climbers","Jump Rope","Side Jump Lunges","Butt Kicks"];
+const AEROBIC_POOL = ["Jumping Jacks","High Knees","Stair Jumps","Side Skaters","Squat Jumps","Mountain Climbers","Jump Rope","Side Jump Lunges","Butt Kicks","Burpees","Tuck Jumps","Star Jumps","Lateral Shuffles","Fast Feet"];
 
 const SNACK_CONFIG = [
   { id:1, label:"SNACK 01", name:"NEURAL WAKE-UP",   color:C.yellow, note:"Smooth start — prime the body, don't redline.", duration:60 },
@@ -275,7 +275,13 @@ const pickBalanced = (pool, salt="") => {
     return seededShuffle(options, getDaySeed(salt + cat))[0];
   }).filter(Boolean);
 };
-const dealHiit = () => { const nine = pick(AEROBIC_POOL, 9, "hiit"); return [nine.slice(0,3), nine.slice(3,6), nine.slice(6,9)]; };
+const dealHiit = (usage={}) => {
+  const seed = getDaySeed("hiit");
+  // Sort least-used first, then seeded shuffle the top 9
+  const sorted = [...AEROBIC_POOL].sort((a,b)=>(usage[a]||0)-(usage[b]||0));
+  const selected = seededShuffle(sorted.slice(0,9), seed);
+  return [selected.slice(0,3), selected.slice(3,6), selected.slice(6,9)];
+};
 
 const getDayPlan = () => {
   const d = new Date().getDay();
@@ -528,7 +534,7 @@ function SnackCard({ config, exercises, timerState, setTimerState }) {
   );
 }
 
-function LiftingSection({ data, checked, setChecked, onSwap, favorites, toggleFav }) {
+function LiftingSection({ data, checked, setChecked, onSwap, favorites, toggleFav, prWeights, setPRWeights }) {
   const [workoutMode,setWorkoutMode] = useState(false);
   const [collapsed,setCollapsed] = useState(false);
   const done = data.exercises.filter((_,i)=>checked[i]).length;
@@ -552,9 +558,23 @@ function LiftingSection({ data, checked, setChecked, onSwap, favorites, toggleFa
         <p style={mono({ fontSize:"11px", color:"#777", margin:"10px 0 14px" })}>5 of {data.pool.length} · randomized · {done}/{data.exercises.length} done</p>
         <MuscleMap activeMuscles={activeMuscles} color={data.color}/>
         <p style={mono({ fontSize:"9px", color:"#444", letterSpacing:"0.1em", textAlign:"center", marginBottom:"14px" })}>MUSCLES TODAY</p>
-        {data.exercises.map((ex,i)=>(
-          <SwipeRow key={i} label={ex.name} sublabel={`${ex.sets} · ${ex.note}`} checked={!!checked[i]} onToggle={()=>setChecked(c=>({...c,[i]:!c[i]}))} onSwap={onSwap&&(()=>onSwap(i))} onFav={toggleFav&&(()=>toggleFav(ex.name))} isFav={favorites&&favorites.includes(ex.name)} color={data.color} isLast={i===data.exercises.length-1}/>
-        ))}
+        {data.exercises.map((ex,i)=>{
+          const w = prWeights&&prWeights[ex.name];
+          return (
+            <div key={i}>
+              <SwipeRow label={ex.name} sublabel={`${ex.sets}${w?` · ${w} lbs`:""} · ${ex.note}`} checked={!!checked[i]} onToggle={()=>setChecked(c=>({...c,[i]:!c[i]}))} onSwap={onSwap&&(()=>onSwap(i))} onFav={toggleFav&&(()=>toggleFav(ex.name))} isFav={favorites&&favorites.includes(ex.name)} color={data.color} isLast={i===data.exercises.length-1}/>
+              {!checked[i]&&setPRWeights&&(
+                <div style={{ display:"flex", alignItems:"center", gap:"6px", padding:"2px 0 6px 34px" }}>
+                  <span style={mono({ fontSize:"8px", color:"#333", letterSpacing:"0.1em" })}>WT</span>
+                  <input type="number" inputMode="numeric" value={w||""} onChange={e=>{const v=e.target.value;setPRWeights(p=>({...p,[ex.name]:v===""?undefined:Number(v)}));}} onFocus={e=>e.target.select()}
+                    style={{ ...mono({ fontSize:"11px" }), width:"52px", background:"#0c0c0c", border:`1px solid #1a1a1a`, borderRadius:"5px", color:"#888", padding:"4px 6px", textAlign:"center", outline:"none" }} placeholder="—"/>
+                  <span style={mono({ fontSize:"8px", color:"#333" })}>lbs</span>
+                  {w && prWeights._prev && prWeights._prev[ex.name] && w > prWeights._prev[ex.name] && <span style={{ fontSize:"10px", color:C.yellow }}>▲ PR</span>}
+                </div>
+              )}
+            </div>
+          );
+        })}
         <button onClick={()=>setWorkoutMode(true)} style={{ ...smallBtn(data.color,false), width:"100%", marginTop:"16px", padding:"12px" }}>▶ GUIDED WORKOUT MODE</button>
       </>}
     </div>
@@ -785,6 +805,35 @@ const DAILY_WISDOM = [
   { text:"It is easier to build strong children than to repair broken men.", source:"Frederick Douglass" },
 ];
 
+function WeekStrip() {
+  const today = new Date();
+  const dow = today.getDay();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - ((dow+6)%7));
+  const days = ["M","T","W","T","F","S","S"];
+  return (
+    <div style={{ display:"flex", justifyContent:"center", gap:"8px", marginBottom:"16px" }}>
+      {days.map((label,i)=>{
+        const d = new Date(monday);
+        d.setDate(monday.getDate()+i);
+        const key = `cw-${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}-daily`;
+        let done = false;
+        try { const raw = localStorage.getItem(key); if(raw){ done = Object.values(JSON.parse(raw)).filter(Boolean).length>=5; } } catch{}
+        const isToday = d.toDateString()===today.toDateString();
+        return (
+          <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:"4px" }}>
+            <span style={mono({ fontSize:"9px", color:isToday?C.yellow:"#444", letterSpacing:"0.05em", fontWeight:isToday?700:400 })}>{label}</span>
+            <div style={{ width:"28px", height:"28px", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", background:done?C.yellow+"22":isToday?"#1a1a1a":"transparent", border:isToday?`1.5px solid ${C.yellow}`:done?`1px solid ${C.yellow}44`:`1px solid #1a1a1a`, transition:"all 0.3s" }}>
+              {done && <span style={{ color:C.yellow, fontSize:"12px", fontWeight:900 }}>✓</span>}
+              {!done && isToday && <div style={{ width:"4px", height:"4px", borderRadius:"50%", background:C.yellow }}/>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function DailyWisdom() {
   const w = DAILY_WISDOM[getDaySeed("wisdom") % DAILY_WISDOM.length];
   return (
@@ -902,7 +951,16 @@ export default function App() {
   const toggleFav = (name)=>setFavorites(f=>f.includes(name)?f.filter(n=>n!==name):[...f,name]);
   const streak = useMemo(() => calcStreak(), [dailyChecked]);
 
-  const [hiitExercises] = useState(()=>dealHiit());
+  const [hiitExercises] = useState(()=>dealHiit(hiitUsage));
+  const markedSnacks = useRef({});
+  useEffect(()=>{
+    SNACK_CONFIG.forEach((cfg,idx)=>{
+      if(timerStates[cfg.id]?.done && !markedSnacks.current[cfg.id] && hiitExercises[idx]){
+        markedSnacks.current[cfg.id] = true;
+        setHiitUsage(u=>{ const next={...u}; hiitExercises[idx].forEach(ex=>{ next[ex]=(next[ex]||0)+1; }); return next; });
+      }
+    });
+  },[timerStates]);
 
   // Lift: base seeded picks + swap overrides
   const [baseLiftPicks] = useState(()=>{
@@ -986,10 +1044,11 @@ export default function App() {
 
         <div style={{ padding:"16px 20px" }}>
           {tab==="today" && <>
+            <WeekStrip/>
             <DailyWisdom/>
             <DailyLog checked={dailyChecked} setChecked={setDailyChecked} streak={streak}/>
             <RehabSection checked={rehabChecked} setChecked={setRehabChecked} open={rehabOpen} setOpen={setRehabOpen}/>
-            {day.type==="lift" && stableLiftData && <LiftingSection data={stableLiftData} checked={liftChecked} setChecked={setLiftChecked} onSwap={swapLift} favorites={favorites} toggleFav={toggleFav}/>}
+            {day.type==="lift" && stableLiftData && <LiftingSection data={stableLiftData} checked={liftChecked} setChecked={setLiftChecked} onSwap={swapLift} favorites={favorites} toggleFav={toggleFav} prWeights={prWeights} setPRWeights={setPRWeights}/>}
             {day.type==="flex" && !day.isWeekend && <WedFlexDay flexChecked={flexChecked} setFlexChecked={setFlexChecked} flexExercises={flexExercises} onFlexSwap={swapFlex} favorites={favorites} toggleFav={toggleFav}/>}
             {day.type==="flex" && day.isWeekend  && <WeekendFlexDay flexChecked={flexChecked} setFlexChecked={setFlexChecked} flexExercises={flexExercises} onFlexSwap={swapFlex} favorites={favorites} toggleFav={toggleFav}/>}
           </>}
@@ -1011,7 +1070,7 @@ export default function App() {
 
           {tab==="lift" && <>
             {day.type==="lift"&&stableLiftData
-              ? <LiftingSection data={stableLiftData} checked={liftChecked} setChecked={setLiftChecked} onSwap={swapLift} favorites={favorites} toggleFav={toggleFav}/>
+              ? <LiftingSection data={stableLiftData} checked={liftChecked} setChecked={setLiftChecked} onSwap={swapLift} favorites={favorites} toggleFav={toggleFav} prWeights={prWeights} setPRWeights={setPRWeights}/>
               : <div style={cardBase(C.border)}>
                   <p style={mono({ fontSize:"10px", letterSpacing:"0.2em", color:C.muted, textTransform:"uppercase", marginBottom:"4px" })}>LIFTING</p>
                   <h2 style={cond({ fontSize:"22px", color:C.muted })}>{day.isWeekend?"FLEX DAY":"YOGA / CORE DAY"}</h2>
