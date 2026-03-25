@@ -193,7 +193,7 @@ const MUSCLE_REGIONS = {
 const BODY_OUTLINE = "M50,8 Q58,8 62,14 Q66,20 65,28 Q68,30 68,36 Q66,40 62,42 Q64,48 62,56 Q60,60 58,68 Q62,78 62,90 Q62,100 60,108 Q58,116 55,118 Q52,120 50,118 Q48,120 45,118 Q42,116 40,108 Q38,100 38,90 Q38,78 42,68 Q40,60 38,56 Q36,48 38,42 Q34,40 32,36 Q32,30 35,28 Q34,20 38,14 Q42,8 50,8 Z";
 const HEAD     = "M50,2 Q56,2 59,7 Q62,12 60,17 Q58,22 50,23 Q42,22 40,17 Q38,12 41,7 Q44,2 50,2 Z";
 
-function MuscleMap({ activeMuscles, color }) {
+function MuscleMap({ activeMuscles, color, pulse }) {
   return (
     <div style={{ display:"flex", gap:"16px", justifyContent:"center", margin:"16px 0 8px" }}>
       {["front","back"].map(side => (
@@ -201,7 +201,7 @@ function MuscleMap({ activeMuscles, color }) {
           <svg width="60" height="130" viewBox="0 0 100 130">
             <path d={HEAD} fill="#1e1e1e" stroke="#2a2a2a" strokeWidth="1"/>
             <path d={BODY_OUTLINE} fill="#1e1e1e" stroke="#2a2a2a" strokeWidth="1"/>
-            {activeMuscles.map(m => { const d = MUSCLE_REGIONS[m]?.[side]; return d ? <path key={m} d={d} fill={color} opacity="0.75" style={{ filter:`drop-shadow(0 0 4px ${color}88)` }}/> : null; })}
+            {activeMuscles.map(m => { const d = MUSCLE_REGIONS[m]?.[side]; return d ? <path key={m} d={d} fill={color} opacity="0.75" style={{ filter:`drop-shadow(0 0 ${pulse?8:4}px ${color}88)`, animation:pulse?"musclePulse 1.5s ease-in-out infinite":"none" }}/> : null; })}
           </svg>
           <div style={{ fontFamily:"'DM Mono',monospace", fontSize:"8px", color:"#444", letterSpacing:"0.1em", textTransform:"uppercase", marginTop:"2px" }}>{side}</div>
         </div>
@@ -275,6 +275,8 @@ const pickBalanced = (pool, salt="") => {
     return seededShuffle(options, getDaySeed(salt + cat))[0];
   }).filter(Boolean);
 };
+const SUPERSET_PAIRS = { bicep:"tricep", tricep:"bicep", chest_press:"shoulder", shoulder:"chest_press", squat:"hinge", hinge:"squat", back_pull:"core_acc", core_acc:"back_pull" };
+
 const dealHiit = (usage={}) => {
   const seed = getDaySeed("hiit");
   // Sort least-used first, then seeded shuffle the top 9
@@ -322,10 +324,13 @@ function useTimer(duration) {
 
 function DoneBadge({ color }) {
   return (
-    <div style={{ position:"absolute", top:"16px", right:"16px", background:`${color}14`, border:`1px solid ${color}44`, borderRadius:"20px", padding:"4px 12px", display:"flex", alignItems:"center", gap:"6px" }}>
-      <div style={{ width:"5px", height:"5px", borderRadius:"50%", background:color, boxShadow:`0 0 6px ${color}` }}/>
-      <span style={mono({ fontSize:"10px", color, letterSpacing:"0.12em" })}>COMPLETE</span>
-    </div>
+    <>
+      <div style={{ position:"absolute", top:"-10px", right:"-10px", width:"100px", height:"100px", borderRadius:"50%", background:`radial-gradient(circle, ${color}18 0%, transparent 70%)`, animation:"burst 1s ease-out forwards", pointerEvents:"none" }}/>
+      <div style={{ position:"absolute", top:"16px", right:"16px", background:`${color}14`, border:`1px solid ${color}44`, borderRadius:"20px", padding:"4px 12px", display:"flex", alignItems:"center", gap:"6px", animation:"fadeIn 0.4s ease" }}>
+        <div style={{ width:"5px", height:"5px", borderRadius:"50%", background:color, boxShadow:`0 0 6px ${color}` }}/>
+        <span style={mono({ fontSize:"10px", color, letterSpacing:"0.12em" })}>COMPLETE</span>
+      </div>
+    </>
   );
 }
 
@@ -463,7 +468,8 @@ function LiftWorkoutMode({ data, checked, setChecked, onClose }) {
             <h1 style={cond({ fontSize:"42px", color:data.color, lineHeight:1.1, textShadow:`0 0 40px ${data.color}55`, marginBottom:"16px" })}>{ex.name}</h1>
             <span style={{ ...mono({ fontSize:"13px", color:C.text }), background:`${data.color}18`, border:`1px solid ${data.color}33`, borderRadius:"8px", padding:"6px 14px", display:"inline-block", marginBottom:"16px" }}>{ex.sets}</span>
             <p style={body({ fontSize:"15px", color:"#888", lineHeight:1.7, fontStyle:"italic" })}>{ex.note}</p>
-            <MuscleMap activeMuscles={ex.muscles||[]} color={data.color}/>
+            <MuscleMap activeMuscles={ex.muscles||[]} color={data.color} pulse/>
+            {(()=>{ const p = data.exercises.find((e,j)=>j!==idx&&SUPERSET_PAIRS[ex.cat]===e.cat); return p ? <p style={mono({ fontSize:"10px", color:data.color+"88", marginTop:"8px", letterSpacing:"0.1em" })}>SUPERSET WITH: {p.name}</p> : null; })()}
           </div>
           <div style={{ display:"flex", gap:"10px" }}>
             {idx>0&&<button onClick={()=>setIdx(i=>i-1)} style={{ ...smallBtn(C.muted,false), flex:1 }}>← PREV</button>}
@@ -806,6 +812,33 @@ const DAILY_WISDOM = [
   { text:"It is easier to build strong children than to repair broken men.", source:"Frederick Douglass" },
 ];
 
+function StreakHeatMap() {
+  const today = new Date();
+  const cells = [];
+  for (let i = 27; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const key = `cw-${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}-daily`;
+    let count = 0;
+    try { const raw = localStorage.getItem(key); if(raw) count = Object.values(JSON.parse(raw)).filter(Boolean).length; } catch {}
+    cells.push({ count, isToday: i===0 });
+  }
+  return (
+    <div style={{ marginBottom:"14px" }}>
+      <p style={mono({ fontSize:"9px", letterSpacing:"0.2em", color:C.soft, marginBottom:"8px" })}>28-DAY STREAK</p>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:"3px" }}>
+        {cells.map((c,i)=>(
+          <div key={i} style={{ aspectRatio:"1", borderRadius:"3px", background:c.count===0?"#111":c.count<5?`rgba(212,245,60,${0.12+c.count*0.08})`:"rgba(212,245,60,0.45)", border:c.isToday?`1px solid ${C.yellow}`:`1px solid transparent`, transition:"all 0.3s" }}/>
+        ))}
+      </div>
+      <div style={{ display:"flex", justifyContent:"space-between", marginTop:"4px" }}>
+        <span style={mono({ fontSize:"7px", color:"#333" })}>4 WEEKS AGO</span>
+        <span style={mono({ fontSize:"7px", color:"#333" })}>TODAY</span>
+      </div>
+    </div>
+  );
+}
+
 function RecoveryCheckIn({ score, setScore }) {
   const levels = [
     { v:1, l:"DRAINED", c:"#FF3D1F" },
@@ -974,6 +1007,8 @@ export default function App() {
   useEffect(()=>{ localStorage.setItem("cw-favorites", JSON.stringify(favorites)); },[favorites]);
   const toggleFav = (name)=>setFavorites(f=>f.includes(name)?f.filter(n=>n!==name):[...f,name]);
   const [recoveryScore, setRecoveryScore] = usePersisted("recovery", 0);
+  const [theme, setTheme] = useState(()=>localStorage.getItem("cw-theme")||"black");
+  useEffect(()=>localStorage.setItem("cw-theme",theme),[theme]);
   const [hiitDuration, setHiitDuration] = useState(()=>{ try { return Number(localStorage.getItem("cw-hiitDur"))||60; } catch { return 60; } });
   useEffect(()=>{ localStorage.setItem("cw-hiitDur", String(hiitDuration)); },[hiitDuration]);
   const changeHiitDuration = (dur)=>{ setHiitDuration(dur); setTimerStates(SNACK_CONFIG.reduce((acc,cfg)=>({...acc,[cfg.id]:{timeLeft:dur,running:false,done:false}}),{})); };
@@ -1046,14 +1081,16 @@ export default function App() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
         *{box-sizing:border-box;margin:0;padding:0;}
-        html,body{background:#080808;}
+        html,body{background:${theme==="midnight"?"#0a0e18":"#080808"};}
         ::-webkit-scrollbar{width:3px;}
         ::-webkit-scrollbar-track{background:#080808;}
         ::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:3px;}
         @keyframes urgentPulse{from{opacity:1;transform:scale(1);}to{opacity:0.72;transform:scale(0.95);}}
         @keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+        @keyframes burst{0%{transform:scale(0.5);opacity:0.8;}100%{transform:scale(2.5);opacity:0;}}
+        @keyframes musclePulse{0%,100%{opacity:0.6;}50%{opacity:1;}}
       `}</style>
-      <div style={{ background:C.bg, minHeight:"100vh", maxWidth:"480px", margin:"0 auto", paddingBottom:"80px" }}>
+      <div style={{ background:theme==="midnight"?"#0a0e18":C.bg, minHeight:"100vh", maxWidth:"480px", margin:"0 auto", paddingBottom:"80px" }}>
 
         <div style={{ padding:"28px 20px 16px", borderBottom:`1px solid ${C.dim}`, background:`radial-gradient(ellipse at 20% 0%, ${dayColor}0c 0%, transparent 60%)` }}>
           <p style={mono({ fontSize:"11px", color:"#666", letterSpacing:"0.2em", marginBottom:"6px" })}>{today.toUpperCase()}</p>
@@ -1065,6 +1102,7 @@ export default function App() {
             </div>
             <ArcRing pct={overallPct} color={overallPct===100?C.yellow:C.teal} size={80}/>
           </div>
+          <button onClick={()=>setTheme(t=>t==="midnight"?"black":"midnight")} style={{ position:"absolute", top:"28px", right:"20px", background:"transparent", border:"none", cursor:"pointer", fontSize:"16px", opacity:0.4, transition:"opacity 0.2s" }} title="Toggle theme">{theme==="midnight"?"☀":"☽"}</button>
         </div>
 
         <div style={{ display:"flex", gap:"6px", padding:"12px 20px", borderBottom:`1px solid ${C.dim}`, overflowX:"auto" }}>
@@ -1075,6 +1113,7 @@ export default function App() {
           {tab==="today" && <>
             <WeekStrip/>
             <RecoveryCheckIn score={recoveryScore} setScore={setRecoveryScore}/>
+            <StreakHeatMap/>
             <DailyWisdom/>
             <DailyLog checked={dailyChecked} setChecked={setDailyChecked} streak={streak}/>
             <RehabSection checked={rehabChecked} setChecked={setRehabChecked} open={rehabOpen} setOpen={setRehabOpen}/>
