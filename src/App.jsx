@@ -323,7 +323,7 @@ function DoneBadge({ color }) {
   );
 }
 
-function SwipeRow({ label, sublabel, checked, onToggle, onSwap, color, isLast }) {
+function SwipeRow({ label, sublabel, checked, onToggle, onSwap, onFav, isFav, color, isLast }) {
   const [dragX,setDragX] = useState(0);
   const [dragging,setDragging] = useState(false);
   const startX = useRef(null);
@@ -358,6 +358,7 @@ function SwipeRow({ label, sublabel, checked, onToggle, onSwap, color, isLast })
           <div style={body({ fontSize:"15px", fontWeight:500, color:checked?"#4a4a4a":"#d0d0d0", textDecoration:checked?"line-through":"none", transition:"color 0.3s" })}>{label}</div>
           {sublabel && <div style={mono({ fontSize:"11px", color:checked?"#3a3a3a":"#777", marginTop:"3px", letterSpacing:"0.05em", transition:"color 0.3s" })}>{sublabel}</div>}
         </div>
+        {onFav&&!checked&&!dragging&&dragX===0 && <button onClick={e=>{e.stopPropagation();onFav();}} onPointerDown={e=>e.stopPropagation()} style={{ background:"transparent", border:"none", cursor:"pointer", flexShrink:0, padding:"0 2px", fontSize:"14px", color:isFav?"#ff4757":"#2a2a2a", transition:"color 0.3s", lineHeight:1 }}>{isFav?"♥":"♡"}</button>}
         {!checked&&!dragging&&dragX===0 && (onSwap
           ? <button onClick={e=>{e.stopPropagation();onSwap();}} onPointerDown={e=>e.stopPropagation()} style={{ ...mono({ fontSize:"13px" }), width:"28px", height:"28px", borderRadius:"50%", border:`1px solid ${color}33`, background:"transparent", color:color+"77", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, lineHeight:1, padding:0 }}>&#x27F3;</button>
           : <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink:0, opacity:0.18 }}><path d="M2 7h10M8 3l4 4-4 4" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -527,7 +528,7 @@ function SnackCard({ config, exercises, timerState, setTimerState }) {
   );
 }
 
-function LiftingSection({ data, checked, setChecked, onSwap }) {
+function LiftingSection({ data, checked, setChecked, onSwap, favorites, toggleFav }) {
   const [workoutMode,setWorkoutMode] = useState(false);
   const [collapsed,setCollapsed] = useState(false);
   const done = data.exercises.filter((_,i)=>checked[i]).length;
@@ -552,7 +553,7 @@ function LiftingSection({ data, checked, setChecked, onSwap }) {
         <MuscleMap activeMuscles={activeMuscles} color={data.color}/>
         <p style={mono({ fontSize:"9px", color:"#444", letterSpacing:"0.1em", textAlign:"center", marginBottom:"14px" })}>MUSCLES TODAY</p>
         {data.exercises.map((ex,i)=>(
-          <SwipeRow key={i} label={ex.name} sublabel={`${ex.sets} · ${ex.note}`} checked={!!checked[i]} onToggle={()=>setChecked(c=>({...c,[i]:!c[i]}))} onSwap={onSwap&&(()=>onSwap(i))} color={data.color} isLast={i===data.exercises.length-1}/>
+          <SwipeRow key={i} label={ex.name} sublabel={`${ex.sets} · ${ex.note}`} checked={!!checked[i]} onToggle={()=>setChecked(c=>({...c,[i]:!c[i]}))} onSwap={onSwap&&(()=>onSwap(i))} onFav={toggleFav&&(()=>toggleFav(ex.name))} isFav={favorites&&favorites.includes(ex.name)} color={data.color} isLast={i===data.exercises.length-1}/>
         ))}
         <button onClick={()=>setWorkoutMode(true)} style={{ ...smallBtn(data.color,false), width:"100%", marginTop:"16px", padding:"12px" }}>▶ GUIDED WORKOUT MODE</button>
       </>}
@@ -561,7 +562,7 @@ function LiftingSection({ data, checked, setChecked, onSwap }) {
 }
 
 // ── Flex Pool Accordion Section ───────────────────────────────────────────────
-function FlexPoolCard({ pool, checked, setChecked, exercises, open, onToggle, onSwap }) {
+function FlexPoolCard({ pool, checked, setChecked, exercises, open, onToggle, onSwap, favorites, toggleFav }) {
   const done = exercises.filter((_,i)=>checked[i]).length;
   const allDone = done===exercises.length;
   return (
@@ -585,7 +586,7 @@ function FlexPoolCard({ pool, checked, setChecked, exercises, open, onToggle, on
         <div style={{ padding:"0 18px 18px", borderTop:`1px solid ${C.dim}` }}>
           <p style={mono({ fontSize:"10px", color:"#555", letterSpacing:"0.1em", margin:"12px 0 10px" })}>5 OF {pool.exercises.length} · RANDOMIZED TODAY</p>
           {exercises.map((ex,i)=>(
-            <SwipeRow key={i} label={ex.name} sublabel={`${ex.sets} · ${ex.note}`} checked={!!checked[i]} onToggle={()=>setChecked(c=>({...c,[i]:!c[i]}))} onSwap={onSwap&&(()=>onSwap(i))} color={pool.color} isLast={i===exercises.length-1}/>
+            <SwipeRow key={i} label={ex.name} sublabel={`${ex.sets} · ${ex.note}`} checked={!!checked[i]} onToggle={()=>setChecked(c=>({...c,[i]:!c[i]}))} onSwap={onSwap&&(()=>onSwap(i))} onFav={toggleFav&&(()=>toggleFav(ex.name))} isFav={favorites&&favorites.includes(ex.name)} color={pool.color} isLast={i===exercises.length-1}/>
           ))}
         </div>
       )}
@@ -634,7 +635,7 @@ function RestCard({ open, onToggle }) {
 }
 
 // Wed: Yoga + Core & Stability
-function WedFlexDay({ flexChecked, setFlexChecked, flexExercises, onFlexSwap }) {
+function WedFlexDay({ flexChecked, setFlexChecked, flexExercises, onFlexSwap, favorites, toggleFav }) {
   const [openSection, setOpenSection] = useState(null);
   const toggle = id => setOpenSection(o => o===id ? null : id);
   return (
@@ -644,7 +645,7 @@ function WedFlexDay({ flexChecked, setFlexChecked, flexExercises, onFlexSwap }) 
       <FlexPoolCard
         pool={FLEX_POOLS.core} checked={flexChecked.core||{}} setChecked={c=>setFlexChecked(f=>({...f,core:typeof c==="function"?c(f.core||{}):c}))}
         exercises={flexExercises.core} open={openSection==="core"} onToggle={()=>toggle("core")}
-        onSwap={onFlexSwap&&(i=>onFlexSwap("core",i))}
+        onSwap={onFlexSwap&&(i=>onFlexSwap("core",i))} favorites={favorites} toggleFav={toggleFav}
       />
     </>
   );
@@ -652,7 +653,7 @@ function WedFlexDay({ flexChecked, setFlexChecked, flexExercises, onFlexSwap }) 
 
 // Sat/Sun: Choose Your Day
 const WEEKEND_OPTIONS = ["rest","yoga","core","mobility","functional","mindbody","cardio"];
-function WeekendFlexDay({ flexChecked, setFlexChecked, flexExercises, onFlexSwap }) {
+function WeekendFlexDay({ flexChecked, setFlexChecked, flexExercises, onFlexSwap, favorites, toggleFav }) {
   const [openSection, setOpenSection] = useState(null);
   const toggle = id => setOpenSection(o => o===id ? null : id);
   return (
@@ -664,7 +665,7 @@ function WeekendFlexDay({ flexChecked, setFlexChecked, flexExercises, onFlexSwap
         <FlexPoolCard key={pool.id}
           pool={pool} checked={flexChecked[pool.id]||{}} setChecked={c=>setFlexChecked(f=>({...f,[pool.id]:typeof c==="function"?c(f[pool.id]||{}):c}))}
           exercises={flexExercises[pool.id]} open={openSection===pool.id} onToggle={()=>toggle(pool.id)}
-          onSwap={onFlexSwap&&(i=>onFlexSwap(pool.id,i))}
+          onSwap={onFlexSwap&&(i=>onFlexSwap(pool.id,i))} favorites={favorites} toggleFav={toggleFav}
         />
       ))}
     </>
@@ -896,6 +897,9 @@ export default function App() {
   const [rehabOpen, setRehabOpen] = useState(false);
   const [prWeights, setPRWeights] = usePR();
   const [hiitUsage, setHiitUsage] = useHiitUsage();
+  const [favorites, setFavorites] = useState(()=>{ try { return JSON.parse(localStorage.getItem("cw-favorites"))||[]; } catch { return []; } });
+  useEffect(()=>{ localStorage.setItem("cw-favorites", JSON.stringify(favorites)); },[favorites]);
+  const toggleFav = (name)=>setFavorites(f=>f.includes(name)?f.filter(n=>n!==name):[...f,name]);
   const streak = useMemo(() => calcStreak(), [dailyChecked]);
 
   const [hiitExercises] = useState(()=>dealHiit());
@@ -985,9 +989,9 @@ export default function App() {
             <DailyWisdom/>
             <DailyLog checked={dailyChecked} setChecked={setDailyChecked} streak={streak}/>
             <RehabSection checked={rehabChecked} setChecked={setRehabChecked} open={rehabOpen} setOpen={setRehabOpen}/>
-            {day.type==="lift" && stableLiftData && <LiftingSection data={stableLiftData} checked={liftChecked} setChecked={setLiftChecked} onSwap={swapLift}/>}
-            {day.type==="flex" && !day.isWeekend && <WedFlexDay flexChecked={flexChecked} setFlexChecked={setFlexChecked} flexExercises={flexExercises} onFlexSwap={swapFlex}/>}
-            {day.type==="flex" && day.isWeekend  && <WeekendFlexDay flexChecked={flexChecked} setFlexChecked={setFlexChecked} flexExercises={flexExercises} onFlexSwap={swapFlex}/>}
+            {day.type==="lift" && stableLiftData && <LiftingSection data={stableLiftData} checked={liftChecked} setChecked={setLiftChecked} onSwap={swapLift} favorites={favorites} toggleFav={toggleFav}/>}
+            {day.type==="flex" && !day.isWeekend && <WedFlexDay flexChecked={flexChecked} setFlexChecked={setFlexChecked} flexExercises={flexExercises} onFlexSwap={swapFlex} favorites={favorites} toggleFav={toggleFav}/>}
+            {day.type==="flex" && day.isWeekend  && <WeekendFlexDay flexChecked={flexChecked} setFlexChecked={setFlexChecked} flexExercises={flexExercises} onFlexSwap={swapFlex} favorites={favorites} toggleFav={toggleFav}/>}
           </>}
 
           {tab==="hiit" && <>
@@ -1007,7 +1011,7 @@ export default function App() {
 
           {tab==="lift" && <>
             {day.type==="lift"&&stableLiftData
-              ? <LiftingSection data={stableLiftData} checked={liftChecked} setChecked={setLiftChecked} onSwap={swapLift}/>
+              ? <LiftingSection data={stableLiftData} checked={liftChecked} setChecked={setLiftChecked} onSwap={swapLift} favorites={favorites} toggleFav={toggleFav}/>
               : <div style={cardBase(C.border)}>
                   <p style={mono({ fontSize:"10px", letterSpacing:"0.2em", color:C.muted, textTransform:"uppercase", marginBottom:"4px" })}>LIFTING</p>
                   <h2 style={cond({ fontSize:"22px", color:C.muted })}>{day.isWeekend?"FLEX DAY":"YOGA / CORE DAY"}</h2>
