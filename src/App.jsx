@@ -475,7 +475,7 @@ function LiftWorkoutMode({ data, checked, setChecked, onClose }) {
   );
 }
 
-function SnackCard({ config, exercises, timerState, setTimerState }) {
+function SnackCard({ config, exercises, timerState, setTimerState, duration }) {
   const [activeMode,setActiveMode] = useState(false);
   const { timeLeft, running, done } = timerState;
   const urgent = running&&timeLeft<=10;
@@ -487,10 +487,11 @@ function SnackCard({ config, exercises, timerState, setTimerState }) {
     return ()=>clearInterval(ref.current);
   },[running]);
   const toggle = ()=>setTimerState(s=>({...s,running:!s.running}));
-  const reset = ()=>{ clearInterval(ref.current); setTimerState({timeLeft:config.duration,running:false,done:false}); };
+  const dur=duration||config.duration;
+  const reset = ()=>{ clearInterval(ref.current); setTimerState({timeLeft:dur,running:false,done:false}); };
   const mins=Math.floor(timeLeft/60), secs=timeLeft%60;
-  const progress=(config.duration-timeLeft)/config.duration;
-  if(activeMode) return <ActiveMode config={config} exercises={exercises} onClose={()=>setActiveMode(false)}/>;
+  const progress=(dur-timeLeft)/dur;
+  if(activeMode) return <ActiveMode config={{...config,duration:dur}} exercises={exercises} onClose={()=>setActiveMode(false)}/>;
   return (
     <div style={{ ...cardBase(config.color,done), border:`1.5px solid ${running?config.color:done?config.color+"55":config.color+"22"}` }}>
       <div style={{ position:"absolute", bottom:0, left:0, right:0, height:"3px", background:C.dim }}>
@@ -805,6 +806,29 @@ const DAILY_WISDOM = [
   { text:"It is easier to build strong children than to repair broken men.", source:"Frederick Douglass" },
 ];
 
+function RecoveryCheckIn({ score, setScore }) {
+  const levels = [
+    { v:1, l:"DRAINED", c:"#FF3D1F" },
+    { v:2, l:"LOW", c:"#FF8C42" },
+    { v:3, l:"NORMAL", c:"#D4F53C" },
+    { v:4, l:"GOOD", c:"#4CAF50" },
+    { v:5, l:"PEAK", c:"#00E5CC" },
+  ];
+  return (
+    <div style={{ marginBottom:"14px" }}>
+      <p style={mono({ fontSize:"9px", letterSpacing:"0.2em", color:C.soft, marginBottom:"10px" })}>RECOVERY CHECK-IN</p>
+      <div style={{ display:"flex", gap:"6px" }}>
+        {levels.map(l=>(
+          <button key={l.v} onClick={()=>setScore(l.v)} style={{ flex:1, padding:"10px 0", borderRadius:"8px", border:score===l.v?`1.5px solid ${l.c}`:`1px solid #1a1a1a`, background:score===l.v?`${l.c}15`:"transparent", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:"4px", transition:"all 0.2s" }}>
+            <span style={cond({ fontSize:"18px", color:score===l.v?l.c:"#444", transition:"color 0.2s" })}>{l.v}</span>
+            <span style={mono({ fontSize:"7px", color:score===l.v?l.c:"#333", letterSpacing:"0.05em" })}>{l.l}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function WeekStrip() {
   const today = new Date();
   const dow = today.getDay();
@@ -949,6 +973,10 @@ export default function App() {
   const [favorites, setFavorites] = useState(()=>{ try { return JSON.parse(localStorage.getItem("cw-favorites"))||[]; } catch { return []; } });
   useEffect(()=>{ localStorage.setItem("cw-favorites", JSON.stringify(favorites)); },[favorites]);
   const toggleFav = (name)=>setFavorites(f=>f.includes(name)?f.filter(n=>n!==name):[...f,name]);
+  const [recoveryScore, setRecoveryScore] = usePersisted("recovery", 0);
+  const [hiitDuration, setHiitDuration] = useState(()=>{ try { return Number(localStorage.getItem("cw-hiitDur"))||60; } catch { return 60; } });
+  useEffect(()=>{ localStorage.setItem("cw-hiitDur", String(hiitDuration)); },[hiitDuration]);
+  const changeHiitDuration = (dur)=>{ setHiitDuration(dur); setTimerStates(SNACK_CONFIG.reduce((acc,cfg)=>({...acc,[cfg.id]:{timeLeft:dur,running:false,done:false}}),{})); };
   const streak = useMemo(() => calcStreak(), [dailyChecked]);
 
   const [hiitExercises] = useState(()=>dealHiit(hiitUsage));
@@ -1023,10 +1051,11 @@ export default function App() {
         ::-webkit-scrollbar-track{background:#080808;}
         ::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:3px;}
         @keyframes urgentPulse{from{opacity:1;transform:scale(1);}to{opacity:0.72;transform:scale(0.95);}}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
       `}</style>
       <div style={{ background:C.bg, minHeight:"100vh", maxWidth:"480px", margin:"0 auto", paddingBottom:"80px" }}>
 
-        <div style={{ padding:"28px 20px 16px", borderBottom:`1px solid ${C.dim}` }}>
+        <div style={{ padding:"28px 20px 16px", borderBottom:`1px solid ${C.dim}`, background:`radial-gradient(ellipse at 20% 0%, ${dayColor}0c 0%, transparent 60%)` }}>
           <p style={mono({ fontSize:"11px", color:"#666", letterSpacing:"0.2em", marginBottom:"6px" })}>{today.toUpperCase()}</p>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
             <div>
@@ -1042,9 +1071,10 @@ export default function App() {
           {TABS.map(t=><Pill key={t.id} label={t.label} active={tab===t.id} onClick={()=>setTab(t.id)}/>)}
         </div>
 
-        <div style={{ padding:"16px 20px" }}>
+        <div key={tab} style={{ padding:"16px 20px", animation:"fadeIn 0.25s ease" }}>
           {tab==="today" && <>
             <WeekStrip/>
+            <RecoveryCheckIn score={recoveryScore} setScore={setRecoveryScore}/>
             <DailyWisdom/>
             <DailyLog checked={dailyChecked} setChecked={setDailyChecked} streak={streak}/>
             <RehabSection checked={rehabChecked} setChecked={setRehabChecked} open={rehabOpen} setOpen={setRehabOpen}/>
@@ -1057,11 +1087,16 @@ export default function App() {
             <div style={{ marginBottom:"20px" }}>
               <p style={mono({ fontSize:"10px", letterSpacing:"0.2em", color:C.yellow, textTransform:"uppercase", marginBottom:"4px" })}>HIIT SNACKS</p>
               <h2 style={cond({ fontSize:"32px", color:C.yellow, textShadow:`0 0 30px ${C.yellow}55` })}>3 MICRO-SESSIONS</h2>
-              <p style={body({ fontSize:"14px", color:"#888", marginTop:"8px", lineHeight:1.6 })}>Aerobic only · unique per snack · 1 min each</p>
-              <p style={mono({ fontSize:"11px", color:"#555", marginTop:"6px" })}>Tap ⛶ for fullscreen mode</p>
+              <p style={body({ fontSize:"14px", color:"#888", marginTop:"8px", lineHeight:1.6 })}>Aerobic only · unique per snack · {hiitDuration}s each</p>
+              <div style={{ display:"flex", gap:"6px", marginTop:"10px" }}>
+                {[30,45,60,90,120].map(d=>(
+                  <button key={d} onClick={()=>changeHiitDuration(d)} style={{ ...mono({ fontSize:"10px", letterSpacing:"0.05em" }), padding:"5px 10px", borderRadius:"6px", border:`1px solid ${hiitDuration===d?C.yellow+"88":"#1a1a1a"}`, background:hiitDuration===d?C.yellow+"18":"transparent", color:hiitDuration===d?C.yellow:"#555", cursor:"pointer", transition:"all 0.2s" }}>{d}s</button>
+                ))}
+              </div>
+              <p style={mono({ fontSize:"11px", color:"#555", marginTop:"8px" })}>Tap ⛶ for fullscreen mode</p>
             </div>
             {SNACK_CONFIG.map((cfg,i)=>(
-              <SnackCard key={cfg.id} config={cfg} exercises={hiitExercises[i]}
+              <SnackCard key={cfg.id} config={cfg} exercises={hiitExercises[i]} duration={hiitDuration}
                 timerState={timerStates[cfg.id]}
                 setTimerState={updater=>setTimerStates(s=>({...s,[cfg.id]:typeof updater==="function"?updater(s[cfg.id]):updater}))}
               />
@@ -1087,8 +1122,8 @@ export default function App() {
         <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:"480px", background:"rgba(8,8,8,0.96)", backdropFilter:"blur(16px)", borderTop:`1px solid ${C.dim}`, display:"flex", justifyContent:"space-around", padding:"10px 0 16px" }}>
           {TABS.map(t=>(
             <button key={t.id} onClick={()=>setTab(t.id)} style={{ background:"transparent", border:"none", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:"4px" }}>
-              <div style={{ width:"4px", height:"4px", borderRadius:"50%", background:tab===t.id?C.yellow:"transparent", boxShadow:tab===t.id?`0 0 6px ${C.yellow}`:"none", transition:"all 0.2s" }}/>
-              <span style={mono({ fontSize:"10px", letterSpacing:"0.1em", color:tab===t.id?C.yellow:C.muted })}>{t.label}</span>
+              <span style={{ fontSize:"16px", opacity:tab===t.id?1:0.3, transition:"opacity 0.2s", lineHeight:1, filter:tab===t.id?`drop-shadow(0 0 4px ${C.yellow})`:"none" }}>{({today:"☀",hiit:"⚡",lift:"▲",rehab:"↻",stack:"◎"})[t.id]}</span>
+              <span style={mono({ fontSize:"9px", letterSpacing:"0.08em", color:tab===t.id?C.yellow:"#444" })}>{t.label}</span>
             </button>
           ))}
         </div>
