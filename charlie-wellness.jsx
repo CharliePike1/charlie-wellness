@@ -1,5 +1,13 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 
+const speakEx = (name, note = "") => {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(note ? `${name}. ${note}` : name);
+  utt.rate = 0.88;
+  window.speechSynthesis.speak(utt);
+};
+
 const C = {
   bg:"#080808", card:"#0f0f0f", border:"#1a1a1a",
   yellow:"#D4F53C", red:"#FF3D1F", teal:"#00E5CC",
@@ -34,7 +42,12 @@ const LIFTING_A = {
     { name:"Tricep Pushdown (band)",      sets:"3×15", note:"Elbows pinned to sides, extend down",           muscles:["triceps"],         cat:"tricep"      },
     { name:"DB Skull Crusher (floor)",    sets:"3×12", note:"Hinge at elbow only, lower toward forehead",    muscles:["triceps"],         cat:"tricep"      },
     { name:"Band Y-Raise",                sets:"3×15", note:"Arms form Y overhead, light band, mid trap",    muscles:["shoulders"],       cat:"shoulder"    },
-    { name:"Band W-Raise",                sets:"3×15", note:"Elbows bent into W shape, lower trap focus",    muscles:["shoulders"],       cat:"shoulder"    },
+    { name:"Band W-Raise",                sets:"3×15", note:"Elbows bent into W shape, lower trap focus",      muscles:["shoulders"],       cat:"shoulder"    },
+    { name:"Band Reverse Fly",            sets:"3×15", note:"Bent over, band anchored in front, pull arms wide and back", muscles:["shoulders","back"], cat:"shoulder" },
+    { name:"Band Front Raise",            sets:"3×12", note:"Band underfoot, raise arm forward to shoulder height, slow lower", muscles:["shoulders"], cat:"shoulder" },
+    { name:"Band Lateral Raise",          sets:"3×12", note:"Band underfoot, raise arm to side, elbow soft, pause at top", muscles:["shoulders"], cat:"shoulder" },
+    { name:"Band Low-to-High Fly",        sets:"3×12", note:"Band anchored low, sweep arm up and across, upper chest focus", muscles:["chest"], cat:"chest_iso" },
+    { name:"Band Chest Squeeze",          sets:"3×12", note:"Bands from each side, press palms together at chest, hold 2s", muscles:["chest"], cat:"chest_iso" },
   ],
   // One pick per category — guaranteed full coverage every session
   categories: ["chest_press","chest_iso","bicep","tricep","shoulder"],
@@ -82,6 +95,7 @@ const SUPPLEMENTS = [
   { name:"Berberine+",          dose:"1200mg",   timing:"With meal" },
   { name:"Protein Shake",       dose:"21g",      timing:"Post workout" },
   { name:"Biotin Gummies",      dose:"6000mcg",  timing:"Morning" },
+  { name:"Zinc",               dose:"50mg",     timing:"With meal 2-3x/wk", color:C.red },
 ];
 
 const DAILY_ITEMS = [
@@ -323,7 +337,7 @@ function DoneBadge({ color }) {
   );
 }
 
-function SwipeRow({ label, sublabel, checked, onToggle, onSwap, color, isLast }) {
+function SwipeRow({ label, sublabel, checked, onToggle, onSwap, onAudio, color, isLast }) {
   const [dragX,setDragX] = useState(0);
   const [dragging,setDragging] = useState(false);
   const startX = useRef(null);
@@ -358,9 +372,14 @@ function SwipeRow({ label, sublabel, checked, onToggle, onSwap, color, isLast })
           <div style={body({ fontSize:"15px", fontWeight:500, color:checked?"#4a4a4a":"#d0d0d0", textDecoration:checked?"line-through":"none", transition:"color 0.3s" })}>{label}</div>
           {sublabel && <div style={mono({ fontSize:"11px", color:checked?"#3a3a3a":"#777", marginTop:"3px", letterSpacing:"0.05em", transition:"color 0.3s" })}>{sublabel}</div>}
         </div>
-        {!checked&&!dragging&&dragX===0 && (onSwap
-          ? <button onClick={e=>{e.stopPropagation();onSwap();}} onPointerDown={e=>e.stopPropagation()} style={{ ...mono({ fontSize:"13px" }), width:"28px", height:"28px", borderRadius:"50%", border:`1px solid ${color}33`, background:"transparent", color:color+"77", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, lineHeight:1, padding:0 }}>&#x27F3;</button>
-          : <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink:0, opacity:0.18 }}><path d="M2 7h10M8 3l4 4-4 4" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        {!checked&&!dragging&&dragX===0 && (
+          <div style={{ display:"flex", gap:"4px", alignItems:"center", flexShrink:0 }}>
+            {onAudio && <button onClick={e=>{e.stopPropagation();onAudio();}} onPointerDown={e=>e.stopPropagation()} style={{ ...mono({ fontSize:"13px" }), width:"28px", height:"28px", borderRadius:"50%", border:`1px solid ${color}22`, background:"transparent", color:color+"55", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1, padding:0 }}>🔊</button>}
+            {onSwap
+              ? <button onClick={e=>{e.stopPropagation();onSwap();}} onPointerDown={e=>e.stopPropagation()} style={{ ...mono({ fontSize:"13px" }), width:"28px", height:"28px", borderRadius:"50%", border:`1px solid ${color}33`, background:"transparent", color:color+"77", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1, padding:0 }}>&#x27F3;</button>
+              : <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ opacity:0.18 }}><path d="M2 7h10M8 3l4 4-4 4" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            }
+          </div>
         )}
       </div>
     </div>
@@ -383,8 +402,10 @@ function ActiveMode({ config, exercises, onClose }) {
       </div>
       <div style={{ zIndex:1, textAlign:"center", marginBottom:"40px" }}>
         {exercises.map((ex,i)=>(
-          <div key={i} style={body({ fontSize:"18px", color:t.running?"#aaa":C.soft, fontWeight:500, lineHeight:2.1, transition:"color 0.3s" })}>
-            <span style={mono({ fontSize:"10px", color:C.muted, marginRight:"12px" })}>{i+1}</span>{ex}
+          <div key={i} style={{ display:"flex", alignItems:"center", gap:"8px" }}>
+            <span style={mono({ fontSize:"10px", color:C.muted })}>{i+1}</span>
+            <span style={{ ...body({ fontSize:"18px", fontWeight:500, transition:"color 0.3s" }), color:t.running?"#aaa":C.soft, flex:1, lineHeight:2.1 }}>{ex}</span>
+            <button onClick={()=>speakEx(ex)} style={{ ...mono({ fontSize:"13px" }), width:"28px", height:"28px", borderRadius:"50%", border:`1px solid ${config.color}22`, background:"transparent", color:config.color+"55", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, padding:0, lineHeight:1 }}>🔊</button>
           </div>
         ))}
       </div>
@@ -415,14 +436,23 @@ function ActiveMode({ config, exercises, onClose }) {
 function LiftWorkoutMode({ data, checked, setChecked, onClose }) {
   const [idx,setIdx] = useState(()=>{ const f=data.exercises.findIndex((_,i)=>!checked[i]); return f===-1?0:f; });
   const [restActive,setRestActive] = useState(false);
+  const [supersetMode,setSupersetMode] = useState(false);
   const restTimer = useTimer(60);
   const ex = data.exercises[idx];
+  const supersetPartnerIdx = idx+1 < data.exercises.length ? idx+1 : null;
+  const nextEx = supersetPartnerIdx !== null ? data.exercises[supersetPartnerIdx] : null;
   const doneCount = data.exercises.filter((_,i)=>checked[i]).length;
   const allDone = doneCount===data.exercises.length;
   const markAndNext = ()=>{
-    setChecked(c=>({...c,[idx]:true}));
-    const next=data.exercises.findIndex((_,i)=>i>idx&&!checked[i]);
-    if(next!==-1){restTimer.reset();setRestActive(true);setTimeout(()=>{setIdx(next);setRestActive(false);},100);}
+    if(supersetMode && supersetPartnerIdx !== null){
+      setChecked(c=>({...c,[idx]:true,[supersetPartnerIdx]:true}));
+      const next=data.exercises.findIndex((_,i)=>i>supersetPartnerIdx&&!checked[i]);
+      if(next!==-1){restTimer.reset();setRestActive(true);setTimeout(()=>{setIdx(next);setRestActive(false);},100);}
+    } else {
+      setChecked(c=>({...c,[idx]:true}));
+      const next=data.exercises.findIndex((_,i)=>i>idx&&!checked[i]);
+      if(next!==-1){restTimer.reset();setRestActive(true);setTimeout(()=>{setIdx(next);setRestActive(false);},100);}
+    }
   };
   return (
     <div style={{ position:"fixed", inset:0, zIndex:998, background:C.bg, display:"flex", flexDirection:"column", maxWidth:"480px", margin:"0 auto" }}>
@@ -430,9 +460,9 @@ function LiftWorkoutMode({ data, checked, setChecked, onClose }) {
       <div style={{ padding:"24px 20px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", zIndex:1 }}>
         <button onClick={onClose} style={{ ...mono({ fontSize:"11px", letterSpacing:"0.1em" }), background:"transparent", border:`1px solid ${C.muted}`, color:C.soft, borderRadius:"8px", padding:"7px 16px", cursor:"pointer" }}>← BACK</button>
         <div style={{ display:"flex", gap:"6px" }}>
-          {data.exercises.map((_,i)=><div key={i} style={{ width:"6px", height:"6px", borderRadius:"50%", background:checked[i]?data.color:i===idx?data.color+"66":C.muted, transition:"all 0.3s", boxShadow:i===idx?`0 0 6px ${data.color}`:"none" }}/>)}
+          {data.exercises.map((_,i)=><div key={i} style={{ width:"6px", height:"6px", borderRadius:"50%", background:checked[i]?data.color:(i===idx||(supersetMode&&i===supersetPartnerIdx))?data.color+"66":C.muted, transition:"all 0.3s", boxShadow:(i===idx||(supersetMode&&i===supersetPartnerIdx))?`0 0 6px ${data.color}`:"none" }}/>)}
         </div>
-        <span style={mono({ fontSize:"11px", color:C.soft })}>{doneCount}/{data.exercises.length}</span>
+        <button onClick={()=>setSupersetMode(m=>!m)} style={{ ...mono({ fontSize:"9px", letterSpacing:"0.08em" }), background:supersetMode?data.color+"22":"transparent", border:`1px solid ${supersetMode?data.color:C.muted}`, color:supersetMode?data.color:C.soft, borderRadius:"6px", padding:"5px 10px", cursor:"pointer" }}>{supersetMode?"SUPER ON":"SUPERSET"}</button>
       </div>
       {allDone?(
         <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", zIndex:1, padding:"28px" }}>
@@ -451,16 +481,31 @@ function LiftWorkoutMode({ data, checked, setChecked, onClose }) {
         </div>
       ):(
         <div style={{ flex:1, display:"flex", flexDirection:"column", padding:"0 28px 28px", zIndex:1 }}>
-          <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center" }}>
-            <p style={mono({ fontSize:"10px", color:data.color, letterSpacing:"0.25em", marginBottom:"12px" })}>EXERCISE {idx+1} OF {data.exercises.length}</p>
-            <h1 style={cond({ fontSize:"42px", color:data.color, lineHeight:1.1, textShadow:`0 0 40px ${data.color}55`, marginBottom:"16px" })}>{ex.name}</h1>
-            <span style={{ ...mono({ fontSize:"13px", color:C.text }), background:`${data.color}18`, border:`1px solid ${data.color}33`, borderRadius:"8px", padding:"6px 14px", display:"inline-block", marginBottom:"16px" }}>{ex.sets}</span>
-            <p style={body({ fontSize:"15px", color:"#888", lineHeight:1.7, fontStyle:"italic" })}>{ex.note}</p>
-            <MuscleMap activeMuscles={ex.muscles||[]} color={data.color}/>
-          </div>
+          {supersetMode && nextEx ? (
+            <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center", gap:"12px" }}>
+              {[{e:ex,label:"A — PRIMARY"},{e:nextEx,label:"B — SUPERSET"}].map(({e,label})=>(
+                <div key={label} style={{ background:`${data.color}0a`, border:`1px solid ${data.color}22`, borderRadius:"12px", padding:"16px" }}>
+                  <p style={mono({ fontSize:"9px", color:data.color, letterSpacing:"0.2em", marginBottom:"6px" })}>{label}</p>
+                  <h2 style={cond({ fontSize:"26px", color:data.color, lineHeight:1.1, marginBottom:"6px" })}>{e.name}</h2>
+                  <span style={{ ...mono({ fontSize:"11px", color:C.text }), background:`${data.color}14`, border:`1px solid ${data.color}22`, borderRadius:"6px", padding:"4px 10px", display:"inline-block", marginBottom:"6px" }}>{e.sets}</span>
+                  <p style={body({ fontSize:"13px", color:"#777", fontStyle:"italic", marginTop:"4px" })}>{e.note}</p>
+                  <button onClick={()=>speakEx(e.name,e.note)} style={{ ...mono({ fontSize:"10px" }), marginTop:"8px", padding:"5px 12px", borderRadius:"6px", border:`1px solid ${data.color}22`, background:"transparent", color:data.color+"66", cursor:"pointer" }}>🔊</button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center" }}>
+              <p style={mono({ fontSize:"10px", color:data.color, letterSpacing:"0.25em", marginBottom:"12px" })}>EXERCISE {idx+1} OF {data.exercises.length}</p>
+              <h1 style={cond({ fontSize:"42px", color:data.color, lineHeight:1.1, textShadow:`0 0 40px ${data.color}55`, marginBottom:"16px" })}>{ex.name}</h1>
+              <span style={{ ...mono({ fontSize:"13px", color:C.text }), background:`${data.color}18`, border:`1px solid ${data.color}33`, borderRadius:"8px", padding:"6px 14px", display:"inline-block", marginBottom:"16px" }}>{ex.sets}</span>
+              <p style={body({ fontSize:"15px", color:"#888", lineHeight:1.7, fontStyle:"italic" })}>{ex.note}</p>
+              <button onClick={()=>speakEx(ex.name,ex.note)} style={{ ...mono({ fontSize:"11px" }), marginTop:"10px", padding:"6px 16px", borderRadius:"8px", border:`1px solid ${data.color}28`, background:"transparent", color:data.color+"66", cursor:"pointer", display:"inline-flex", alignItems:"center", gap:"6px" }}>🔊 <span>HEAR CUES</span></button>
+              <MuscleMap activeMuscles={ex.muscles||[]} color={data.color}/>
+            </div>
+          )}
           <div style={{ display:"flex", gap:"10px" }}>
             {idx>0&&<button onClick={()=>setIdx(i=>i-1)} style={{ ...smallBtn(C.muted,false), flex:1 }}>← PREV</button>}
-            <button onClick={markAndNext} style={{ ...bigBtn(data.color,false), flex:2, padding:"16px 0" }}>{checked[idx]?"NEXT →":"DONE ✓"}</button>
+            <button onClick={markAndNext} style={{ ...bigBtn(data.color,false), flex:2, padding:"16px 0" }}>{supersetMode&&nextEx?"DONE BOTH ✓":checked[idx]?"NEXT →":"DONE ✓"}</button>
           </div>
         </div>
       )}
@@ -496,9 +541,10 @@ function SnackCard({ config, exercises, timerState, setTimerState }) {
       </div>
       <div style={{ marginBottom:"14px", opacity:done?0.35:1, transition:"opacity 0.4s" }}>
         {exercises.map((ex,i)=>(
-          <div key={i} style={{ display:"flex", gap:"10px", padding:"6px 0", borderBottom:i<2?`1px solid ${C.dim}`:"none" }}>
+          <div key={i} style={{ display:"flex", gap:"10px", alignItems:"center", padding:"6px 0", borderBottom:i<2?`1px solid ${C.dim}`:"none" }}>
             <span style={mono({ fontSize:"10px", color:C.muted, minWidth:"14px" })}>{i+1}</span>
-            <span style={body({ fontSize:"15px", color:"#c8c8c8", fontWeight:500 })}>{ex}</span>
+            <span style={{ ...body({ fontSize:"15px", color:"#c8c8c8", fontWeight:500 }), flex:1 }}>{ex}</span>
+            <button onClick={()=>speakEx(ex)} style={{ ...mono({ fontSize:"13px" }), width:"26px", height:"26px", borderRadius:"50%", border:`1px solid ${config.color}22`, background:"transparent", color:config.color+"55", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, padding:0, lineHeight:1 }}>🔊</button>
           </div>
         ))}
       </div>
@@ -686,7 +732,7 @@ function RehabSection({ checked, setChecked, open, setOpen }) {
         <button onClick={()=>setOpen(o=>!o)} style={{ ...mono({ fontSize:"10px", letterSpacing:"0.1em" }), background:"transparent", border:`1px solid ${C.purple}33`, color:C.purple+"88", borderRadius:"7px", padding:"7px 14px", cursor:"pointer" }}>{open?"HIDE":"SHOW"}</button>
       </div>
       {open&&<div style={{ marginTop:"16px" }}>
-        {REHAB.map((ex,i)=><SwipeRow key={i} label={ex.name} sublabel={`${ex.sets} · ${ex.note}`} checked={!!checked[i]} onToggle={()=>setChecked(c=>({...c,[i]:!c[i]}))} color={C.purple} isLast={i===REHAB.length-1}/>)}
+        {REHAB.map((ex,i)=><SwipeRow key={i} label={ex.name} sublabel={`${ex.sets} · ${ex.note}`} checked={!!checked[i]} onToggle={()=>setChecked(c=>({...c,[i]:!c[i]}))} onAudio={()=>speakEx(ex.name,ex.note)} color={C.purple} isLast={i===REHAB.length-1}/>)}
       </div>}
     </div>
   );
@@ -701,7 +747,7 @@ function SupplementsSection({ checked, setChecked }) {
       <p style={mono({ fontSize:"10px", letterSpacing:"0.2em", color:C.blue, textTransform:"uppercase", marginBottom:"4px" })}>DAILY STACK</p>
       <h2 style={cond({ fontSize:"22px", color:allDone?C.blue+"77":C.blue, marginBottom:"4px", textShadow:`0 0 20px ${C.blue}${allDone?"18":"44"}`, transition:"all 0.4s" })}>SUPPLEMENTS</h2>
       <p style={mono({ fontSize:"11px", color:"#777", marginBottom:"16px" })}>{done}/{SUPPLEMENTS.length} taken today</p>
-      {SUPPLEMENTS.map((s,i)=><SwipeRow key={i} label={s.name} sublabel={`${s.dose} · ${s.timing}`} checked={!!checked[i]} onToggle={()=>setChecked(c=>({...c,[i]:!c[i]}))} color={C.blue} isLast={i===SUPPLEMENTS.length-1}/>)}
+      {SUPPLEMENTS.map((s,i)=><SwipeRow key={i} label={s.name} sublabel={`${s.dose} · ${s.timing}`} checked={!!checked[i]} onToggle={()=>setChecked(c=>({...c,[i]:!c[i]}))} color={s.color||C.blue} isLast={i===SUPPLEMENTS.length-1}/>)}
     </div>
   );
 }
