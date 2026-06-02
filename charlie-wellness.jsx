@@ -44,10 +44,15 @@ const LIFTING_A = {
     { name:"Band Y-Raise",                sets:"3×15", note:"Arms form Y overhead, light band, mid trap",    muscles:["shoulders"],       cat:"shoulder"    },
     { name:"Band W-Raise",                sets:"3×15", note:"Elbows bent into W shape, lower trap focus",      muscles:["shoulders"],       cat:"shoulder"    },
     { name:"Band Reverse Fly",            sets:"3×15", note:"Bent over, band anchored in front, pull arms wide and back", muscles:["shoulders","back"], cat:"shoulder" },
-    { name:"Band Front Raise",            sets:"3×12", note:"Band underfoot, raise arm forward to shoulder height, slow lower", muscles:["shoulders"], cat:"shoulder" },
+    { name:"Band Front Raise",            sets:"3×12", note:"Palms up (supinated grip), band underfoot, raise arm forward to shoulder height, slow controlled lower", muscles:["shoulders"], cat:"shoulder" },
     { name:"Band Lateral Raise",          sets:"3×12", note:"Band underfoot, raise arm to side, elbow soft, pause at top", muscles:["shoulders"], cat:"shoulder" },
     { name:"Band Low-to-High Fly",        sets:"3×12", note:"Band anchored low, sweep arm up and across, upper chest focus", muscles:["chest"], cat:"chest_iso" },
     { name:"Band Chest Squeeze",          sets:"3×12", note:"Bands from each side, press palms together at chest, hold 2s", muscles:["chest"], cat:"chest_iso" },
+    { name:"Incline DB Press (30°)",      sets:"3×10", note:"30° incline maximizes upper pec. Full ROM — do not cut the top. Palms face forward.", muscles:["chest","triceps"], cat:"chest_press" },
+    { name:"Zottman Curl",               sets:"3×10", note:"Supinate on the way up, pronate on the way down. Loads brachioradialis on eccentric — two muscles per rep.", muscles:["biceps"], cat:"bicep" },
+    { name:"Overhead DB Tricep Ext",     sets:"3×12", note:"Long head only fully stretches when arm is elevated. Elbows straight to ceiling, no flare. This is the 55% of tricep that pushdowns miss.", muscles:["triceps"], cat:"tricep" },
+    { name:"DB Prone Y-T-W",             sets:"3×12", note:"Face down on floor, light DBs. Y=lower trap, T=mid trap+rear delt, W=infraspinatus. Three patterns, one setup.", muscles:["shoulders","back"], cat:"shoulder" },
+    { name:"Serratus Wall Slide (A)",    sets:"3×12", note:"Forearms on wall, slide up, push wall away at top. Feel ribs protract. Critical for AC joint stability.", muscles:["shoulders"], cat:"shoulder" },
   ],
   // One pick per category — guaranteed full coverage every session
   categories: ["chest_press","chest_iso","bicep","tricep","shoulder"],
@@ -72,6 +77,10 @@ const LIFTING_B = {
     { name:"Face Pull (band)",         sets:"3×15",      note:"Band at face height, external rotation at end",      muscles:["back","shoulders"],    cat:"back_pull"  },
     { name:"Dead Bug (band)",          sets:"3×10 each", note:"Band overhead, extend opposite arm and leg",         muscles:["core"],                cat:"core_acc"   },
     { name:"Pallof Press (band/door)", sets:"3×12 each", note:"Door anchor, press out from chest, resist rotation", muscles:["core"],                cat:"core_acc"   },
+    { name:"Good Morning (band)",      sets:"3×12",      note:"Band across upper back, hinge at hip. Soft knees — NOT a squat. Trains hip hinge motor pattern under axial load.", muscles:["hamstrings","glutes","back"], cat:"hinge" },
+    { name:"DB Step-Up (stair)",       sets:"3×12 each", note:"Step height so hip reaches 90° at bottom. Eliminates stretch reflex, forces true quad concentric. Underrated for VMO.", muscles:["quads","glutes"], cat:"squat" },
+    { name:"Copenhagen Plank",         sets:"3×25s each",note:"Side plank with top knee on bench. Gold standard adductor exercise. Progress to foot on bench when easy.", muscles:["core","glutes"], cat:"core_acc" },
+    { name:"DB Seal Row",              sets:"3×10",      note:"Face down on elevated surface, elbow flares 45-60° from torso. Covers mid-trap/rhomboid angle all standard rows miss.", muscles:["back","shoulders"], cat:"back_pull" },
   ],
   // One pick per category — guaranteed full coverage every session
   categories: ["hinge","squat","hamstring_iso","back_pull","core_acc"],
@@ -87,6 +96,118 @@ const REHAB = [
   { name:"Cross-Body Stretch",       sets:"3×30s each", note:"Gentle posterior capsule" },
   { name:"External Rotation (band)", sets:"3×15 each",  note:"Elbow at 90°, band at side" },
 ];
+
+const SCIENCE_CUES = {
+  chest_press:   "Lead with your elbows on the descent — the pec is fully lengthened under load at the bottom stretch. That's where growth happens.",
+  chest_iso:     "Keep tension on the pec throughout — the moment you lock out, tension drops to near zero. Stop 10° short of full extension.",
+  bicep:         "Pin your elbow slightly behind your hip at the top — the bicep can only fully contract past neutral. Anterior delt cannot substitute that final range.",
+  tricep:        "Overhead position only loads the long head (55% of total tricep volume). Pushdowns and kickbacks miss it entirely.",
+  shoulder:      "Finish every face pull rep with thumbs behind your ears — that forced external rotation trains the infraspinatus, not just the rear delt.",
+  hinge:         "Push the floor away with your hips at lockout — glute drive prevents the lumbar hyperextension most people default to.",
+  squat:         "Screw your feet into the floor without moving them — external rotation torque activates glute med and eliminates knee valgus without any conscious knee thought.",
+  back_pull:     "Lead with your elbow, not your hand — if you feel it in your forearms, the bicep is driving, not the lat.",
+  core:          "Brace like you're about to take a punch from all four directions simultaneously. 360° compression — not sucking in, not pushing out.",
+  hamstring_iso: "Initiate the curl by digging your heel down before bending your knee — pre-loads the hamstring at insertion and eliminates quad substitution.",
+};
+
+const EXTRAS_POOLS = {
+  serratus: {
+    id:"serratus", label:"SERRATUS ANTERIOR", icon:"⟁", color:"#D4F53C",
+    urgency:"CRITICAL", shoulderSafe:true,
+    note:"The shoulder's foundation. Weak serratus is the #1 contributor to AC joint issues. This is not optional.",
+    exercises:[
+      { name:"Serratus Wall Slide",      sets:"3×12",     note:"Forearms on wall, slide up, push wall away at top. Feel the blade wrap around your ribcage. That final push IS the exercise." },
+      { name:"Serratus Punch (lying)",   sets:"3×15",     note:"Arm vertical, light DB. Reach for the ceiling by protracting the scapula — not lifting the arm. The blade moves, not the humerus." },
+      { name:"Bear Crawl (slow)",        sets:"3×20m",    note:"Hips low, back flat, ribs braced. Every step demands constant serratus activation to prevent winging. Harder than it looks." },
+      { name:"Quadruped Shoulder Tap",   sets:"3×10 each",note:"Slow, no hip rotation. Planted arm serratus stabilizes the blade under full bodyweight while opposite hand lifts." },
+      { name:"Wall Push-Up Plus",        sets:"3×12",     note:"At the top of each rep, add an extra push — chest further from wall. That last 2cm is the serratus contraction. Never skip it." },
+    ],
+  },
+  neck: {
+    id:"neck", label:"NECK", icon:"◎", color:"#FF3D1F",
+    urgency:"HIGH", shoulderSafe:true,
+    note:"Neck strength reduces impact force transmission. Never load heavy. Stop immediately if you feel any sharp or shooting sensation.",
+    exercises:[
+      { name:"Neck Flexion (hand resist)",sets:"3×12",     note:"Palm on forehead. Push head forward against hand resistance — hand wins. Tongue on roof of mouth activates deep cervical flexors." },
+      { name:"Lateral Flexion (hand)",   sets:"3×10 each",note:"Hand on side of head, ear to shoulder. Shoulder stays depressed — zero shrugging. Pain means stop immediately." },
+      { name:"Isometric Rotation Hold",  sets:"3×25s each",note:"Hand on temple, try to rotate — hand prevents movement. No forced range. Jaw relaxed, breathe normally." },
+      { name:"Neck Extension (light)",   sets:"3×10",     note:"Hand on back of skull, push head back gently against hand. Small range, avoid hyperextension. Most undertrained cervical pattern." },
+      { name:"Chin Tuck",                sets:"3×10",     note:"Pull chin straight back — double chin position. Hold 3s. Releases forward-head posture that loads the cervical spine under any pressing load." },
+    ],
+  },
+  tibialis: {
+    id:"tibialis", label:"TIBIALIS ANTERIOR", icon:"◈", color:"#00E5CC",
+    urgency:"HIGH", shoulderSafe:true,
+    note:"The shin muscle that decelerates every foot strike. Weakness causes shin splints and knee pain via altered gait mechanics.",
+    exercises:[
+      { name:"Tibialis Raise (heels on step)",sets:"3×20",     note:"Heels on step edge, feet hanging. Pull toes to shins as high as possible. Controlled return. Add ankle weight when easy." },
+      { name:"Banded Dorsiflexion (seated)", sets:"3×15 each",note:"Band around forefoot, anchored low. Pull toes to shin against resistance. Full range, slow return." },
+      { name:"Heel Walk",                    sets:"3×20m",    note:"Walk on heels only, toes pointed up. By 15 meters you will feel exactly where your tibialis is." },
+      { name:"Farmer Carry on Heels",        sets:"2×20m",    note:"Same as heel walk but with light DBs. Forces constant anterior shin activation for shock absorption." },
+      { name:"Single-Leg Heel Balance",      sets:"3×30s each",note:"Balance on one heel only, toes raised. Tibialis works isometrically to maintain position." },
+    ],
+  },
+  adductors: {
+    id:"adductors", label:"ADDUCTORS", icon:"◉", color:"#3D8EFF",
+    urgency:"HIGH", shoulderSafe:true,
+    note:"Athletes with weak adductors are 17× more likely to sustain a groin injury. They're also primary hip stabilizers in every step you take.",
+    exercises:[
+      { name:"Copenhagen Plank (knee)",   sets:"3×25s each",note:"Side plank with top knee on bench. Gold standard adductor exercise. Progress to foot on bench when ready." },
+      { name:"Band Hip Adduction (stand)",sets:"3×15 each",note:"Band at ankle, anchored to side. Slow cross-body pull. Control the return. The leg moves — not the hip." },
+      { name:"Lateral Lunge + 3s Hold",  sets:"3×8 each", note:"Step wide, hold 3s at bottom before returning. End range under stretch-load is the most undertrained adductor position." },
+      { name:"Sumo Squat Pulse",          sets:"3×15",     note:"Wide stance, toes out 45°. Lower to parallel, pulse 2 inches × 5, then return. Adductors under sustained tension throughout." },
+      { name:"Adductor Squeeze Hold",     sets:"3×15",     note:"On back, knees bent, rolled towel between knees. Squeeze and hold 2s, slow release. Pure isometric adductor activation." },
+    ],
+  },
+  glutemed: {
+    id:"glutemed", label:"GLUTE MED", icon:"◯", color:"#B06EFF",
+    urgency:"HIGH", shoulderSafe:true,
+    note:"Standard squats activate glute med at 28–40% MVC. Dedicated work hits 81% MVC. You cannot squat your way to adequate glute med strength.",
+    exercises:[
+      { name:"Side-Lying Abduction (band)",sets:"3×18 each",note:"Toes pointed slightly DOWN — isolates the posterior glute med, the weak and undertrained portion in nearly everyone." },
+      { name:"Single-Leg Glute Bridge",    sets:"3×12 each",note:"Band above knees creates adduction pressure the glute med must resist. Drive through heel, not toe." },
+      { name:"Lateral Band Walk",          sets:"3×15 each",note:"Band above knees, hip-width, partial squat. Constant tension — knees track over toes at all times." },
+      { name:"Clamshell (band)",           sets:"3×18 each",note:"Side-lying, hips stacked, knees 90°. Rotate top knee toward ceiling keeping feet together. Band adds end-range resistance." },
+      { name:"Single-Leg Hip Hike",        sets:"3×10 each",note:"Stand on one leg. Slowly drop opposite hip, drive it back up using standing-leg glute med. This is what your glute med does in every step." },
+    ],
+  },
+  obliques: {
+    id:"obliques", label:"OBLIQUES", icon:"⬡", color:"#FF8C42",
+    urgency:"MEDIUM", shoulderSafe:true,
+    note:"Anti-rotation patterns are 3:1 priority over crunch-based oblique work. Resist rotation before you produce it.",
+    exercises:[
+      { name:"Pallof Press (2s hold)",    sets:"3×12 each",note:"Band at sternum height. Press straight out, hold 2 seconds, return. The pause at full extension IS the anti-rotation work." },
+      { name:"Band Woodchop (high-low)",  sets:"3×10 each",note:"Controlled full range. The eccentric return phase is where obliques are most loaded — do not rush it." },
+      { name:"Suitcase Carry (one DB)",   sets:"3×35m each",note:"Single DB at side. Walk without letting torso lean toward the weight. Covers obliques, QL, and glute med simultaneously." },
+      { name:"Side Plank Hip Dip",        sets:"3×10 each",note:"Standard side plank. Lower hip toward floor, drive back up. Adds dynamic load to the isometric hold." },
+      { name:"Dead Bug + Band Resist",    sets:"3×8 each", note:"Band around one foot, anchored at floor. Extending that leg pulls the band — core resists rotation and extension simultaneously." },
+    ],
+  },
+  forearms: {
+    id:"forearms", label:"FOREARMS & GRIP", icon:"◌", color:"#00E5CC",
+    urgency:"MEDIUM", shoulderSafe:true,
+    note:"Grip strength is a top predictor of all-cause mortality. Every 5kg decline correlates with 17% increased cardiovascular death risk (Lancet, 2015, 140,000-person study).",
+    exercises:[
+      { name:"Farmer Carry (heavy)",      sets:"3×35m",    note:"Most time-efficient grip builder. Walk at moderate pace, shoulders depressed — do not let them creep toward your ears." },
+      { name:"Wrist Curl + Reverse Curl", sets:"3×15 each dir",note:"Both directions required — training only flexion without extension creates an imbalance that leads to tendinitis. Full range, slow eccentric." },
+      { name:"Dead Hang",                 sets:"3×30s",    note:"Decompresses the spine simultaneously. Start bent-arm if AC joint is sensitive — test conservatively, progress to full hang." },
+      { name:"Plate Pinch Carry",         sets:"3×25s",    note:"Two plates held together smooth-sides out. Builds pinch strength — most undertrained grip pattern and strongest predictor of hand strength." },
+      { name:"Towel Wring",               sets:"2×90s",    note:"Both hands, wring in both directions. Conditions tendons and pulleys — structural tissue that only responds to sustained low-load time-under-tension." },
+    ],
+  },
+  wrists: {
+    id:"wrists", label:"WRISTS & HANDS", icon:"◑", color:"#FF8C42",
+    urgency:"MEDIUM", shoulderSafe:true,
+    note:"Tendons and ligaments thicken in response to progressive load over weeks, not sessions. Consistency here is everything.",
+    exercises:[
+      { name:"Wrist Roller",              sets:"3× full up-down",note:"Both pronated and supinated grip. Slow descent — eccentric phase is where connective tissue loading occurs." },
+      { name:"Finger Extension (band)",   sets:"3×20 each",note:"Band around all five fingers, spread against resistance. Restores extensor-flexor balance that desk work destroys." },
+      { name:"Reverse Curl (light DB)",   sets:"3×15",     note:"Palms facing down, curl as normal. Isolates brachioradialis and wrist extensor complex. Completely absent in most programs." },
+      { name:"Wrist Stretch (both ways)", sets:"3×30s each",note:"Palm flat on wall, fingers down (flexor stretch), then fingers up (extensor stretch). Equal time both directions." },
+      { name:"DB Forearm Rotation",       sets:"3×12 each",note:"Light DB at end. Rotate from neutral (hammer) to fully supinated and back. Trains forearm rotation ROM under load." },
+    ],
+  },
+};
 
 const SUPPLEMENTS = [
   { name:"Creatine",            dose:"5g",       timing:"Morning" },
@@ -433,7 +554,7 @@ function ActiveMode({ config, exercises, onClose }) {
   );
 }
 
-function LiftWorkoutMode({ data, checked, setChecked, onClose }) {
+function LiftWorkoutMode({ data, checked, setChecked, onClose, onComplete }) {
   const [idx,setIdx] = useState(()=>{ const f=data.exercises.findIndex((_,i)=>!checked[i]); return f===-1?0:f; });
   const [restActive,setRestActive] = useState(false);
   const [supersetMode,setSupersetMode] = useState(false);
@@ -468,7 +589,7 @@ function LiftWorkoutMode({ data, checked, setChecked, onClose }) {
         <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", zIndex:1, padding:"28px" }}>
           <div style={cond({ fontSize:"72px", color:data.color, textShadow:`0 0 60px ${data.color}88`, lineHeight:1, marginBottom:"16px" })}>DONE</div>
           <p style={body({ fontSize:"16px", color:"#777", textAlign:"center" })}>Session complete.</p>
-          <button onClick={onClose} style={{ ...bigBtn(data.color,false), marginTop:"40px" }}>FINISH</button>
+          <button onClick={()=>{ onComplete&&onComplete(); onClose(); }} style={{ ...bigBtn(data.color,false), marginTop:"40px" }}>FINISH</button>
         </div>
       ):restActive?(
         <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", zIndex:1 }}>
@@ -573,13 +694,14 @@ function SnackCard({ config, exercises, timerState, setTimerState }) {
   );
 }
 
-function LiftingSection({ data, checked, setChecked, onSwap }) {
+function LiftingSection({ data, checked, setChecked, onSwap, onComplete }) {
   const [workoutMode,setWorkoutMode] = useState(false);
   const [collapsed,setCollapsed] = useState(false);
   const done = data.exercises.filter((_,i)=>checked[i]).length;
   const allDone = done===data.exercises.length;
   const activeMuscles = [...new Set(data.exercises.flatMap(e=>e.muscles||[]))];
-  if(workoutMode) return <LiftWorkoutMode data={data} checked={checked} setChecked={setChecked} onClose={()=>setWorkoutMode(false)}/>;
+  const cueCat = data.categories[getDaySeed("cue") % data.categories.length];
+  if(workoutMode) return <LiftWorkoutMode data={data} checked={checked} setChecked={setChecked} onClose={()=>setWorkoutMode(false)} onComplete={onComplete}/>;
   return (
     <div style={cardBase(data.color,allDone)}>
       {allDone&&<DoneBadge color={data.color}/>}
@@ -597,8 +719,9 @@ function LiftingSection({ data, checked, setChecked, onSwap }) {
         <p style={mono({ fontSize:"11px", color:"#777", margin:"10px 0 14px" })}>5 of {data.pool.length} · randomized · {done}/{data.exercises.length} done</p>
         <MuscleMap activeMuscles={activeMuscles} color={data.color}/>
         <p style={mono({ fontSize:"9px", color:"#444", letterSpacing:"0.1em", textAlign:"center", marginBottom:"14px" })}>MUSCLES TODAY</p>
+        <ScienceCue category={cueCat} color={data.color}/>
         {data.exercises.map((ex,i)=>(
-          <SwipeRow key={i} label={ex.name} sublabel={`${ex.sets} · ${ex.note}`} checked={!!checked[i]} onToggle={()=>setChecked(c=>({...c,[i]:!c[i]}))} onSwap={onSwap&&(()=>onSwap(i))} color={data.color} isLast={i===data.exercises.length-1}/>
+          <SwipeRow key={i} label={ex.name} sublabel={`${ex.sets} · ${ex.note}`} checked={!!checked[i]} onToggle={()=>setChecked(c=>({...c,[i]:!c[i]}))} onSwap={onSwap&&(()=>onSwap(i))} onAudio={()=>speakEx(ex.name,ex.note)} color={data.color} isLast={i===data.exercises.length-1}/>
         ))}
         <button onClick={()=>setWorkoutMode(true)} style={{ ...smallBtn(data.color,false), width:"100%", marginTop:"16px", padding:"12px" }}>▶ GUIDED WORKOUT MODE</button>
       </>}
@@ -752,7 +875,7 @@ function SupplementsSection({ checked, setChecked }) {
   );
 }
 
-function DailyLog({ checked, setChecked, streak }) {
+function DailyLog({ checked, setChecked }) {
   const done = DAILY_ITEMS.filter((_,i)=>checked[i]).length;
   const pct = Math.round((done/DAILY_ITEMS.length)*100);
   const allDone = done===DAILY_ITEMS.length;
@@ -765,7 +888,7 @@ function DailyLog({ checked, setChecked, streak }) {
           <h2 style={cond({ fontSize:"22px", color:allDone?"#777":C.text, transition:"color 0.4s" })}>DAILY LOG</h2>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:"16px" }}>
-          <StreakFlame streak={streak}/>
+          <WeeklyMomentum/>
           <ArcRing pct={pct} color={allDone?C.yellow:C.blue} size={72}/>
         </div>
       </div>
@@ -778,12 +901,239 @@ function Pill({ label, active, onClick }) {
   return <button onClick={onClick} style={{ ...mono({ fontSize:"10px", letterSpacing:"0.12em", fontWeight:700 }), padding:"6px 14px", borderRadius:"20px", border:`1px solid ${active?C.yellow:C.muted}`, background:active?C.yellow:"transparent", color:active?"#000":C.soft, cursor:"pointer", transition:"all 0.2s", whiteSpace:"nowrap" }}>{label}</button>;
 }
 
+// ── WeeklyMomentum — 12-week bar replaces streak flame ───────────────────────
+function WeeklyMomentum() {
+  const WEEKS = 12;
+  const segments = useMemo(() => {
+    const segs = [];
+    const now = new Date();
+    for (let w = WEEKS - 1; w >= 0; w--) {
+      const monday = new Date(now);
+      const dow = monday.getDay();
+      const daysToMon = dow === 0 ? -6 : 1 - dow;
+      monday.setDate(monday.getDate() + daysToMon - w * 7);
+      let totalChecked = 0, totalItems = 0, anyDay = 0;
+      for (let d = 0; d < 7; d++) {
+        const day = new Date(monday);
+        day.setDate(monday.getDate() + d);
+        if (day > now) continue;
+        const key = `cw-${day.getFullYear()}-${day.getMonth()+1}-${day.getDate()}-daily`;
+        try {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            const n = Object.values(JSON.parse(raw)).filter(Boolean).length;
+            totalChecked += n; totalItems += 7; anyDay++;
+          }
+        } catch {}
+      }
+      const pct = totalItems > 0 ? totalChecked / totalItems : -1;
+      segs.push({ w, pct, isShield: pct >= 1.0, isDone: pct >= 0.8, isCurrent: w === 0, anyDay });
+    }
+    return segs;
+  }, []);
+  const weekStreak = segments.filter(s => s.isDone).length;
+  const shields = segments.filter(s => s.isShield).length;
+  return (
+    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:"4px" }}>
+      <div style={{ display:"flex", gap:"3px", alignItems:"flex-end" }}>
+        {segments.map((s, i) => {
+          const fill = s.isCurrent ? Math.max(0, Math.min(s.pct >= 0 ? s.pct : 0, 1)) : (s.isDone ? 1 : (s.anyDay > 0 ? 0.18 : 0));
+          return (
+            <div key={i} style={{ position:"relative", width:"8px", height:s.isCurrent?"24px":"16px", borderRadius:"2px", background:C.muted, overflow:"hidden" }}>
+              <div style={{ position:"absolute", bottom:0, left:0, right:0, height:`${fill*100}%`, background:s.isShield?C.teal:(s.isDone?C.yellow:C.orange), transition:"height 0.4s ease", boxShadow:s.isShield?`0 0 6px ${C.teal}88`:(s.isDone?`0 0 4px ${C.yellow}44`:"none") }}/>
+              {s.isShield && <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"5px" }}>🔒</div>}
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ display:"flex", gap:"6px", alignItems:"center" }}>
+        <span style={mono({ fontSize:"9px", color:weekStreak>0?C.yellow:C.muted, letterSpacing:"0.1em", fontWeight:700 })}>{weekStreak}W</span>
+        {shields > 0 && <span style={mono({ fontSize:"8px", color:C.teal })}>{shields}🔒</span>}
+      </div>
+    </div>
+  );
+}
+
+// ── ScienceCue — evidence-based tip shown in workout sections ─────────────────
+function ScienceCue({ category, color }) {
+  const cue = SCIENCE_CUES[category];
+  if (!cue) return null;
+  return (
+    <div style={{ background:`${color}08`, border:`1px solid ${color}18`, borderRadius:"8px", padding:"10px 14px", marginBottom:"12px", display:"flex", gap:"10px", alignItems:"flex-start" }}>
+      <span style={{ fontSize:"12px", marginTop:"2px", flexShrink:0 }}>🧬</span>
+      <p style={body({ fontSize:"13px", color:"#888", lineHeight:1.6, fontStyle:"italic" })}>{cue}</p>
+    </div>
+  );
+}
+
+// ── SessionCinematic — completion flash (#7) ──────────────────────────────────
+function SessionCinematic({ data, onDone }) {
+  const [visible, setVisible] = useState(false);
+  const templates = [
+    "Every set. Every rep. Done.",
+    `${data.label} — Complete.`,
+    "Built different.",
+    "The work is in the log.",
+  ];
+  const headline = templates[getDaySeed("cinematic") % templates.length];
+  useEffect(() => {
+    const t1 = setTimeout(() => setVisible(true), 150);
+    const t2 = setTimeout(() => setVisible(false), 1900);
+    const t3 = setTimeout(() => onDone(), 2600);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, []);
+  return (
+    <div style={{ position:"fixed", inset:0, zIndex:9999, background:"#000", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", maxWidth:"480px", margin:"0 auto" }}>
+      <div style={{ opacity:visible?1:0, transform:visible?"scale(1)":"scale(0.92)", transition:"opacity 0.35s ease, transform 0.4s cubic-bezier(0.34,1.56,0.64,1)", textAlign:"center", padding:"32px" }}>
+        <div style={cond({ fontSize:"64px", color:data.color, textShadow:`0 0 80px ${data.color}88`, lineHeight:1.1, marginBottom:"24px" })}>{headline}</div>
+        <div style={mono({ fontSize:"11px", color:"#555", letterSpacing:"0.2em" })}>SESSION COMPLETE</div>
+      </div>
+    </div>
+  );
+}
+
+// ── RPECapture — 3-tap effort rating post-session (#6) ────────────────────────
+function RPECapture({ onSubmit }) {
+  return (
+    <div style={{ position:"fixed", inset:0, zIndex:9998, background:"rgba(0,0,0,0.9)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", maxWidth:"480px", margin:"0 auto" }}>
+      <p style={mono({ fontSize:"10px", letterSpacing:"0.2em", color:C.soft, marginBottom:"28px" })}>HOW WAS THAT SESSION?</p>
+      <div style={{ display:"flex", gap:"16px" }}>
+        {[{label:"EASY",val:2,c:C.teal},{label:"HARD",val:3,c:C.orange},{label:"MAX",val:5,c:C.red}].map(({label,val,c})=>(
+          <button key={val} onClick={()=>onSubmit(val)} style={{ ...cond({ fontSize:"15px" }), background:`${c}18`, border:`2px solid ${c}44`, color:c, borderRadius:"12px", padding:"22px 20px", cursor:"pointer", transition:"all 0.15s" }}>{label}</button>
+        ))}
+      </div>
+      <button onClick={()=>onSubmit(0)} style={{ ...mono({ fontSize:"10px", letterSpacing:"0.1em" }), marginTop:"28px", background:"transparent", border:"none", color:C.muted, cursor:"pointer" }}>SKIP</button>
+    </div>
+  );
+}
+
+// ── CoachPulse — Monday morning brief (#8) ────────────────────────────────────
+function useCoachPulse() {
+  return useMemo(() => {
+    const today = new Date();
+    if (today.getDay() !== 1) return null;
+    const dismissKey = `cw-coach-${today.getFullYear()}-${today.getMonth()+1}-${today.getDate()}`;
+    try { if (localStorage.getItem(dismissKey)) return null; } catch {}
+    let sessionsCompleted = 0;
+    for (let i = 1; i <= 7; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const key = `cw-${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}-daily`;
+      try {
+        const raw = localStorage.getItem(key);
+        if (raw) { if (Object.values(JSON.parse(raw)).filter(Boolean).length >= 5) sessionsCompleted++; }
+      } catch {}
+    }
+    const positive = sessionsCompleted >= 5 ? `Strong week — you hit your daily targets ${sessionsCompleted} out of 7 days.`
+      : sessionsCompleted >= 3 ? `Solid foundation — ${sessionsCompleted} complete days last week.`
+      : "New week, clean slate. Last week is logged. This week is open.";
+    return { positive, focus:"This week: protect the morning window. The first habit sets the tone for every one after it.", action:"Action: before you open anything else this morning, mark one item done. Momentum starts with the first check.", dismissKey };
+  }, []);
+}
+
+function CoachPulseBrief({ pulse, onDismiss }) {
+  if (!pulse) return null;
+  return (
+    <div style={{ ...cardBase(C.yellow, false), borderLeft:`3px solid ${C.yellow}`, marginBottom:"14px" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"12px" }}>
+        <div>
+          <p style={mono({ fontSize:"9px", letterSpacing:"0.2em", color:C.yellow, marginBottom:"4px" })}>MONDAY · COACH PULSE</p>
+          <h3 style={cond({ fontSize:"18px", color:C.yellow })}>THIS WEEK'S BRIEF</h3>
+        </div>
+        <button onClick={onDismiss} style={{ background:"transparent", border:"none", color:C.muted, cursor:"pointer", fontSize:"20px", lineHeight:1, padding:"0 4px" }}>×</button>
+      </div>
+      {[pulse.positive, pulse.focus, pulse.action].map((line, i) => (
+        <div key={i} style={{ display:"flex", gap:"10px", marginBottom:i<2?"10px":0 }}>
+          <span style={mono({ fontSize:"10px", color:C.yellow, marginTop:"3px", flexShrink:0 })}>{["01","02","03"][i]}</span>
+          <p style={body({ fontSize:"14px", color:"#bbb", lineHeight:1.6 })}>{line}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── PRProofBoard (#3) ─────────────────────────────────────────────────────────
+function PRProofBoard({ prWeights }) {
+  const entries = Object.entries(prWeights||{}).filter(([,v])=>v>0);
+  if (entries.length === 0) return (
+    <div style={{ ...cardBase(C.yellow, false), marginBottom:"14px" }}>
+      <p style={mono({ fontSize:"10px", letterSpacing:"0.2em", color:C.yellow, textTransform:"uppercase", marginBottom:"4px" })}>PROOF BOARD</p>
+      <h2 style={cond({ fontSize:"22px", color:"#444", marginBottom:"8px" })}>PERSONAL RECORDS</h2>
+      <p style={body({ fontSize:"13px", color:"#555", fontStyle:"italic" })}>No PRs logged yet — coming soon when set-logging lands.</p>
+    </div>
+  );
+  return (
+    <div style={{ ...cardBase(C.yellow, false), marginBottom:"14px" }}>
+      <p style={mono({ fontSize:"10px", letterSpacing:"0.2em", color:C.yellow, textTransform:"uppercase", marginBottom:"4px" })}>PROOF BOARD</p>
+      <h2 style={cond({ fontSize:"22px", color:C.yellow, marginBottom:"16px", textShadow:`0 0 20px ${C.yellow}44` })}>PERSONAL RECORDS</h2>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"8px" }}>
+        {entries.map(([name,weight])=>(
+          <div key={name} style={{ background:`${C.yellow}08`, border:`1px solid ${C.yellow}18`, borderRadius:"10px", padding:"12px" }}>
+            <p style={mono({ fontSize:"8px", color:"#555", letterSpacing:"0.1em", marginBottom:"4px", textTransform:"uppercase" })}>{name.length>20?name.slice(0,18)+"…":name}</p>
+            <p style={cond({ fontSize:"28px", color:C.yellow, lineHeight:1 })}>{weight}<span style={mono({ fontSize:"10px", color:"#666", marginLeft:"3px" })}>lbs</span></p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Urgency badge + ExtrasPoolCard ────────────────────────────────────────────
+const URGENCY_COLORS = { CRITICAL:C.red, HIGH:C.orange, MEDIUM:C.teal };
+function UrgencyBadge({ level }) {
+  const c = URGENCY_COLORS[level]||C.muted;
+  return (
+    <div style={{ display:"inline-flex", alignItems:"center", gap:"5px", background:`${c}18`, border:`1px solid ${c}33`, borderRadius:"20px", padding:"3px 10px" }}>
+      <div style={{ width:"4px", height:"4px", borderRadius:"50%", background:c, boxShadow:`0 0 5px ${c}` }}/>
+      <span style={mono({ fontSize:"9px", color:c, letterSpacing:"0.1em" })}>{level}</span>
+    </div>
+  );
+}
+
+function ExtrasPoolCard({ pool, checked, setChecked, open, onToggle }) {
+  const done = pool.exercises.filter((_,i)=>checked[i]).length;
+  const allDone = done===pool.exercises.length;
+  return (
+    <div style={{ ...cardBase(pool.color, allDone), marginBottom:"8px", padding:0 }}>
+      <div onClick={onToggle} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"16px 18px", cursor:"pointer" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:"10px" }}>
+          <span style={{ fontSize:"16px", opacity:0.7 }}>{pool.icon}</span>
+          <div>
+            <p style={mono({ fontSize:"9px", letterSpacing:"0.15em", color:pool.color, marginBottom:"4px" })}>{pool.label}</p>
+            <div style={{ display:"flex", gap:"6px", alignItems:"center", flexWrap:"wrap" }}>
+              <UrgencyBadge level={pool.urgency}/>
+              {pool.shoulderSafe&&<span style={mono({ fontSize:"8px", color:C.teal })}>🛡 SHOULDER SAFE</span>}
+            </div>
+          </div>
+        </div>
+        <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
+          {open&&<span style={mono({ fontSize:"10px", color:C.soft })}>{done}/{pool.exercises.length}</span>}
+          {allDone&&<div style={{ width:"6px", height:"6px", borderRadius:"50%", background:pool.color, boxShadow:`0 0 6px ${pool.color}` }}/>}
+          <span style={mono({ fontSize:"12px", color:open?pool.color:C.muted })}>{open?"▲":"▼"}</span>
+        </div>
+      </div>
+      {open&&(
+        <div style={{ padding:"0 18px 18px", borderTop:`1px solid ${C.dim}` }}>
+          <p style={body({ fontSize:"13px", color:"#666", fontStyle:"italic", lineHeight:1.6, marginTop:"12px", marginBottom:"12px" })}>{pool.note}</p>
+          {pool.exercises.map((ex,i)=>(
+            <SwipeRow key={i} label={ex.name} sublabel={`${ex.sets} · ${ex.note}`}
+              checked={!!checked[i]} onToggle={()=>setChecked(c=>({...c,[i]:!c[i]}))}
+              onAudio={()=>speakEx(ex.name,ex.note)}
+              color={pool.color} isLast={i===pool.exercises.length-1}/>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const TABS = [
-  { id:"today", label:"TODAY" },
-  { id:"hiit",  label:"HIIT"  },
-  { id:"lift",  label:"LIFT"  },
-  { id:"rehab", label:"REHAB" },
-  { id:"stack", label:"STACK" },
+  { id:"today",  label:"TODAY"  },
+  { id:"hiit",   label:"HIIT"   },
+  { id:"lift",   label:"LIFT"   },
+  { id:"rehab",  label:"REHAB"  },
+  { id:"extras", label:"EXTRAS" },
+  { id:"stack",  label:"STACK"  },
 ];
 
 // ── Daily Wisdom — seeded by date, same quote all day ────────────────────────
@@ -942,7 +1292,27 @@ export default function App() {
   const [rehabOpen, setRehabOpen] = useState(false);
   const [prWeights, setPRWeights] = usePR();
   const [hiitUsage, setHiitUsage] = useHiitUsage();
-  const streak = useMemo(() => calcStreak(), [dailyChecked]);
+  const [extrasChecked, setExtrasChecked] = usePersisted("extras", {});
+  const [extrasOpen, setExtrasOpen] = useState(null);
+  const [showCinematic, setShowCinematic] = useState(false);
+  const [cinematicData, setCinematicData] = useState(null);
+  const [showRPE, setShowRPE] = useState(false);
+  const coachPulse = useCoachPulse();
+  const [pulseDismissed, setPulseDismissed] = useState(false);
+  const handleWorkoutComplete = (data) => { setCinematicData(data); setShowCinematic(true); };
+  const handleCinematicDone = () => { setShowCinematic(false); setShowRPE(true); };
+  const handleRPE = (val) => {
+    if (val > 0) {
+      const d = new Date();
+      const key = `cw-rpe-${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+      try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+    }
+    setShowRPE(false);
+  };
+  const dismissPulse = () => {
+    setPulseDismissed(true);
+    if (coachPulse?.dismissKey) { try { localStorage.setItem(coachPulse.dismissKey,"1"); } catch {} }
+  };
 
   const [hiitExercises] = useState(()=>dealHiit());
 
@@ -999,6 +1369,8 @@ export default function App() {
 
   return (
     <>
+      {showCinematic && cinematicData && <SessionCinematic data={cinematicData} onDone={handleCinematicDone}/>}
+      {showRPE && <RPECapture onSubmit={handleRPE}/>}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
         *{box-sizing:border-box;margin:0;padding:0;}
@@ -1028,10 +1400,11 @@ export default function App() {
 
         <div style={{ padding:"16px 20px" }}>
           {tab==="today" && <>
+            {!pulseDismissed && coachPulse && <CoachPulseBrief pulse={coachPulse} onDismiss={dismissPulse}/>}
             <DailyWisdom/>
-            <DailyLog checked={dailyChecked} setChecked={setDailyChecked} streak={streak}/>
+            <DailyLog checked={dailyChecked} setChecked={setDailyChecked}/>
             <RehabSection checked={rehabChecked} setChecked={setRehabChecked} open={rehabOpen} setOpen={setRehabOpen}/>
-            {day.type==="lift" && stableLiftData && <LiftingSection data={stableLiftData} checked={liftChecked} setChecked={setLiftChecked} onSwap={swapLift}/>}
+            {day.type==="lift" && stableLiftData && <LiftingSection data={stableLiftData} checked={liftChecked} setChecked={setLiftChecked} onSwap={swapLift} onComplete={()=>handleWorkoutComplete(stableLiftData)}/>}
             {day.type==="flex" && !day.isWeekend && <WedFlexDay flexChecked={flexChecked} setFlexChecked={setFlexChecked} flexExercises={flexExercises} onFlexSwap={swapFlex}/>}
             {day.type==="flex" && day.isWeekend  && <WeekendFlexDay flexChecked={flexChecked} setFlexChecked={setFlexChecked} flexExercises={flexExercises} onFlexSwap={swapFlex}/>}
           </>}
@@ -1053,7 +1426,7 @@ export default function App() {
 
           {tab==="lift" && <>
             {day.type==="lift"&&stableLiftData
-              ? <LiftingSection data={stableLiftData} checked={liftChecked} setChecked={setLiftChecked} onSwap={swapLift}/>
+              ? <LiftingSection data={stableLiftData} checked={liftChecked} setChecked={setLiftChecked} onSwap={swapLift} onComplete={()=>handleWorkoutComplete(stableLiftData)}/>
               : <div style={cardBase(C.border)}>
                   <p style={mono({ fontSize:"10px", letterSpacing:"0.2em", color:C.muted, textTransform:"uppercase", marginBottom:"4px" })}>LIFTING</p>
                   <h2 style={cond({ fontSize:"22px", color:C.muted })}>{day.isWeekend?"FLEX DAY":"YOGA / CORE DAY"}</h2>
@@ -1064,7 +1437,28 @@ export default function App() {
           </>}
 
           {tab==="rehab" && <RehabSection checked={rehabChecked} setChecked={setRehabChecked} open={rehabOpen} setOpen={setRehabOpen}/>}
-          {tab==="stack" && <SupplementsSection checked={stackChecked} setChecked={setStackChecked}/>}
+
+          {tab==="extras" && <>
+            <div style={{ marginBottom:"20px" }}>
+              <p style={mono({ fontSize:"10px", letterSpacing:"0.2em", color:C.orange, textTransform:"uppercase", marginBottom:"4px" })}>SUPPLEMENTAL WORK</p>
+              <h2 style={cond({ fontSize:"32px", color:C.orange, textShadow:`0 0 30px ${C.orange}55` })}>BODY EXTRAS</h2>
+              <p style={body({ fontSize:"14px", color:"#888", marginTop:"8px", lineHeight:1.6 })}>The 15 minutes that compound over years. Add any to any day — all shoulder safe.</p>
+            </div>
+            {Object.values(EXTRAS_POOLS).map(pool=>(
+              <ExtrasPoolCard key={pool.id}
+                pool={pool}
+                checked={extrasChecked[pool.id]||{}}
+                setChecked={c=>setExtrasChecked(f=>({...f,[pool.id]:typeof c==="function"?c(f[pool.id]||{}):c}))}
+                open={extrasOpen===pool.id}
+                onToggle={()=>setExtrasOpen(o=>o===pool.id?null:pool.id)}
+              />
+            ))}
+          </>}
+
+          {tab==="stack" && <>
+            <PRProofBoard prWeights={prWeights}/>
+            <SupplementsSection checked={stackChecked} setChecked={setStackChecked}/>
+          </>}
         </div>
 
         <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:"480px", background:"rgba(8,8,8,0.96)", backdropFilter:"blur(16px)", borderTop:`1px solid ${C.dim}`, display:"flex", justifyContent:"space-around", padding:"10px 0 16px" }}>
