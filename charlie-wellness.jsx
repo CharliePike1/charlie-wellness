@@ -53,6 +53,9 @@ const LIFTING_A = {
     { name:"Overhead DB Tricep Ext",     sets:"3×12", note:"Long head only fully stretches when arm is elevated. Elbows straight to ceiling, no flare. This is the 55% of tricep that pushdowns miss.", muscles:["triceps"], cat:"tricep" },
     { name:"DB Prone Y-T-W",             sets:"3×12", note:"Face down on floor, light DBs. Y=lower trap, T=mid trap+rear delt, W=infraspinatus. Three patterns, one setup.", muscles:["shoulders","back"], cat:"shoulder" },
     { name:"Serratus Wall Slide (A)",    sets:"3×12", note:"Forearms on wall, slide up, push wall away at top. Feel ribs protract. Critical for AC joint stability.", muscles:["shoulders"], cat:"shoulder" },
+    { name:"DB Squeeze Press",           sets:"3×10", note:"Press DBs together hard through the whole rep. Constant inner-pec tension — highest pec EMG of any floor-safe press variation.", muscles:["chest","triceps"], cat:"chest_press" },
+    { name:"DB Floor Fly",               sets:"3×12", note:"Slight elbow bend, lower until upper arms touch floor — built-in safety stop protects the AC joint at the stretch position.", muscles:["chest"], cat:"chest_iso" },
+    { name:"Band Tricep Kickback",       sets:"3×15", note:"Hinge forward, elbow pinned high. Peak contraction at full extension — bands beat DBs here because tension peaks where the muscle shortens.", muscles:["triceps"], cat:"tricep" },
   ],
   // One pick per category — guaranteed full coverage every session
   categories: ["chest_press","chest_iso","bicep","tricep","shoulder"],
@@ -81,6 +84,13 @@ const LIFTING_B = {
     { name:"DB Step-Up (stair)",       sets:"3×12 each", note:"Step height so hip reaches 90° at bottom. Eliminates stretch reflex, forces true quad concentric. Underrated for VMO.", muscles:["quads","glutes"], cat:"squat" },
     { name:"Copenhagen Plank",         sets:"3×25s each",note:"Side plank with top knee on bench. Gold standard adductor exercise. Progress to foot on bench when easy.", muscles:["core","glutes"], cat:"core_acc" },
     { name:"DB Seal Row",              sets:"3×10",      note:"Face down on elevated surface, elbow flares 45-60° from torso. Covers mid-trap/rhomboid angle all standard rows miss.", muscles:["back","shoulders"], cat:"back_pull" },
+    { name:"Single-Leg RDL (DB)",      sets:"3×10 each", note:"DB in opposite hand to working leg. Balance demand recruits glute med while loading the hinge — two adaptations per rep.", muscles:["hamstrings","glutes"], cat:"hinge" },
+    { name:"B-Stance Hip Thrust",      sets:"3×10 each", note:"Shoulders on couch, 80% load on front leg, back foot just for balance. Unilateral glute drive without full single-leg instability.", muscles:["glutes","hamstrings"], cat:"hinge" },
+    { name:"Sliding Leg Curl (towel)", sets:"3×10",      note:"On back, heels on towel. Bridge up, slide heels out and in keeping hips tall. Highest hamstring EMG of any home variation — eccentric is everything.", muscles:["hamstrings","glutes"], cat:"hamstring_iso" },
+    { name:"Single-Leg Sliding Curl",  sets:"3×6 each",  note:"Same as sliding curl, one leg. Brutal eccentric load — the closest home substitute for a Nordic curl.", muscles:["hamstrings"], cat:"hamstring_iso" },
+    { name:"Standing Band Leg Curl",   sets:"3×15 each", note:"Band at ankle, anchored low behind. Curl heel to glute standing tall. Constant tension, zero lower-back involvement.", muscles:["hamstrings"], cat:"hamstring_iso" },
+    { name:"Banded Razor Curl",        sets:"3×8",       note:"Kneel, ankles anchored under couch, band assist from front. Lower torso forward hinging at knee only. Eccentric hamstring strength — injury-proofing gold.", muscles:["hamstrings"], cat:"hamstring_iso" },
+    { name:"Suitcase Carry",           sets:"3×30s each",note:"One heavy DB at side, walk tall without leaning. Anti-lateral-flexion core, obliques, QL, and grip in one movement.", muscles:["core"], cat:"core_acc" },
   ],
   // One pick per category — guaranteed full coverage every session
   categories: ["hinge","squat","hamstring_iso","back_pull","core_acc"],
@@ -431,6 +441,7 @@ const cardBase = (accent, allDone=false) => ({
   borderRadius:"16px", padding:"22px", marginBottom:"14px",
   boxShadow:allDone?`0 8px 32px #00000060,inset 0 1px 0 #ffffff0a,0 0 24px ${accent}15`:`0 8px 32px #00000050,inset 0 1px 0 #ffffff0a`,
   position:"relative", overflow:"hidden", transition:"border 0.5s,box-shadow 0.5s",
+  animation:"cardIn 0.45s cubic-bezier(0.22,1.2,0.36,1) both",
 });
 
 function useTimer(duration) {
@@ -694,9 +705,34 @@ function SnackCard({ config, exercises, timerState, setTimerState }) {
   );
 }
 
-function LiftingSection({ data, checked, setChecked, onSwap, onComplete }) {
+// ── OptionScroller — horizontal swipe-through of every exercise in a category ─
+function OptionScroller({ options, current, color, onPick }) {
+  return (
+    <div style={{ margin:"2px 0 10px", padding:"10px 0 12px", borderBottom:`1px solid ${C.dim}` }}>
+      <p style={mono({ fontSize:"8px", color:"#555", letterSpacing:"0.15em", marginBottom:"8px" })}>{options.length} OPTIONS · SWIPE → TAP TO SELECT</p>
+      <div style={{ display:"flex", gap:"8px", overflowX:"auto", paddingBottom:"4px", WebkitOverflowScrolling:"touch", scrollSnapType:"x proximity" }}>
+        {options.map(opt=>{
+          const isCurrent = opt.name===current;
+          return (
+            <button key={opt.name} onClick={()=>!isCurrent&&onPick(opt.name)}
+              style={{ flexShrink:0, scrollSnapAlign:"start", width:"160px", textAlign:"left", cursor:isCurrent?"default":"pointer",
+                background:isCurrent?`${color}16`:"rgba(255,255,255,0.025)", border:`1.5px solid ${isCurrent?color:C.muted+"66"}`,
+                borderRadius:"10px", padding:"10px 12px", transition:"all 0.2s",
+                boxShadow:isCurrent?`0 0 12px ${color}33`:"none" }}>
+              <p style={body({ fontSize:"12px", fontWeight:600, color:isCurrent?color:"#bbb", marginBottom:"4px", lineHeight:1.3 })}>{opt.name}</p>
+              <p style={mono({ fontSize:"9px", color:isCurrent?color+"99":"#555" })}>{opt.sets}{isCurrent?" · ACTIVE":""}</p>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function LiftingSection({ data, checked, setChecked, onSwap, onChoose, onComplete }) {
   const [workoutMode,setWorkoutMode] = useState(false);
   const [collapsed,setCollapsed] = useState(false);
+  const [optOpen,setOptOpen] = useState(null);
   const done = data.exercises.filter((_,i)=>checked[i]).length;
   const allDone = done===data.exercises.length;
   const activeMuscles = [...new Set(data.exercises.flatMap(e=>e.muscles||[]))];
@@ -716,12 +752,18 @@ function LiftingSection({ data, checked, setChecked, onSwap, onComplete }) {
         </div>
       </div>
       {!collapsed&&<>
-        <p style={mono({ fontSize:"11px", color:"#777", margin:"10px 0 14px" })}>5 of {data.pool.length} · randomized · {done}/{data.exercises.length} done</p>
+        <p style={mono({ fontSize:"11px", color:"#777", margin:"10px 0 14px" })}>5 of {data.pool.length} · randomized · tap ⟳ for options · {done}/{data.exercises.length} done</p>
         <MuscleMap activeMuscles={activeMuscles} color={data.color}/>
         <p style={mono({ fontSize:"9px", color:"#444", letterSpacing:"0.1em", textAlign:"center", marginBottom:"14px" })}>MUSCLES TODAY</p>
         <ScienceCue category={cueCat} color={data.color}/>
         {data.exercises.map((ex,i)=>(
-          <SwipeRow key={i} label={ex.name} sublabel={`${ex.sets} · ${ex.note}`} checked={!!checked[i]} onToggle={()=>setChecked(c=>({...c,[i]:!c[i]}))} onSwap={onSwap&&(()=>onSwap(i))} onAudio={()=>speakEx(ex.name,ex.note)} color={data.color} isLast={i===data.exercises.length-1}/>
+          <div key={i}>
+            <SwipeRow label={ex.name} sublabel={`${ex.sets} · ${ex.note}`} checked={!!checked[i]} onToggle={()=>setChecked(c=>({...c,[i]:!c[i]}))} onSwap={(onChoose||onSwap)&&(()=>setOptOpen(o=>o===i?null:i))} onAudio={()=>speakEx(ex.name,ex.note)} color={data.color} isLast={i===data.exercises.length-1&&optOpen!==i}/>
+            {optOpen===i&&onChoose&&(
+              <OptionScroller options={data.pool.filter(e=>e.cat===ex.cat)} current={ex.name} color={data.color}
+                onPick={name=>{onChoose(i,name);setOptOpen(null);}}/>
+            )}
+          </div>
         ))}
         <button onClick={()=>setWorkoutMode(true)} style={{ ...smallBtn(data.color,false), width:"100%", marginTop:"16px", padding:"12px" }}>▶ GUIDED WORKOUT MODE</button>
       </>}
@@ -1127,6 +1169,37 @@ function ExtrasPoolCard({ pool, checked, setChecked, open, onToggle }) {
   );
 }
 
+// ── WorkoutPicker — override the scheduled day, train what you want ──────────
+function WorkoutPicker({ override, onSet, scheduledLabel }) {
+  const opts = [
+    { id:null,   label:"AUTO",        c:C.soft   },
+    { id:"A",    label:"ARMS/CHEST",  c:C.yellow },
+    { id:"B",    label:"LEGS/BACK",   c:C.teal   },
+    { id:"flex", label:"FLEX",        c:C.orange },
+  ];
+  return (
+    <div style={{ marginBottom:"14px" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:"8px", marginBottom:"8px" }}>
+        <p style={mono({ fontSize:"9px", letterSpacing:"0.2em", color:"#555" })}>TODAY'S SESSION</p>
+        {override!==null&&<span style={mono({ fontSize:"8px", color:C.orange, letterSpacing:"0.1em" })}>OVERRIDE · scheduled: {scheduledLabel}</span>}
+      </div>
+      <div style={{ display:"flex", gap:"6px", overflowX:"auto", WebkitOverflowScrolling:"touch" }}>
+        {opts.map(o=>{
+          const active = override===o.id;
+          return (
+            <button key={String(o.id)} onClick={()=>onSet(o.id)}
+              style={{ ...mono({ fontSize:"10px", letterSpacing:"0.1em", fontWeight:700 }), flexShrink:0, padding:"8px 14px", borderRadius:"8px",
+                border:`1.5px solid ${active?o.c:C.muted}`, background:active?o.c+"1a":"transparent", color:active?o.c:"#777",
+                cursor:"pointer", transition:"all 0.2s", boxShadow:active?`0 0 10px ${o.c}33`:"none" }}>
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 const TABS = [
   { id:"today",  label:"TODAY"  },
   { id:"hiit",   label:"HIIT"   },
@@ -1277,8 +1350,16 @@ const calcStreak = () => {
 
 export default function App() {
   const [tab,setTab] = useState("today");
-  const day = getDayPlan();
+  const [dayOverride, setDayOverride] = usePersisted("dayOverride", null); // null | "A" | "B" | "flex"
+  const day = useMemo(()=>{
+    if(dayOverride==="A")    return { type:"lift", split:"A" };
+    if(dayOverride==="B")    return { type:"lift", split:"B" };
+    if(dayOverride==="flex") return { type:"flex", isWeekend:true };
+    return getDayPlan();
+  },[dayOverride]);
   const today = new Date().toLocaleDateString("en-US",{ weekday:"long", month:"short", day:"numeric" });
+  const scheduled = getDayPlan();
+  const scheduledLabel = scheduled.type==="lift" ? (scheduled.split==="A"?"ARMS/CHEST":"LEGS/BACK") : "FLEX";
 
   // ── Persisted state — survives app close, auto-resets at midnight ──
   const [dailyChecked, setDailyChecked] = usePersisted("daily", {});
@@ -1317,23 +1398,24 @@ export default function App() {
   const [hiitExercises] = useState(()=>dealHiit());
 
   // Lift: base seeded picks + swap overrides
-  const [baseLiftPicks] = useState(()=>{
+  const baseLiftPicks = useMemo(()=>{
     if(day.type!=="lift") return null;
-    return pickBalanced(day.split==="A"?LIFTING_A:LIFTING_B,"lift");
-  });
+    return pickBalanced(day.split==="A"?LIFTING_A:LIFTING_B,"lift"+day.split);
+  },[day]);
   const [liftSwaps, setLiftSwaps] = usePersisted("liftSwaps", {});
   const stableLiftData = useMemo(()=>{
     if(!baseLiftPicks) return null;
     const pool = day.split==="A"?LIFTING_A:LIFTING_B;
     const exercises = baseLiftPicks.map((ex,i)=>{
-      const n = liftSwaps[i]||0;
+      const n = liftSwaps[`${day.split}-${i}`];
       if(!n) return ex;
       const opts = pool.exercises.filter(e=>e.cat===ex.cat);
+      if(typeof n==="string") return opts.find(e=>e.name===n)||ex;
       const base = opts.findIndex(e=>e.name===ex.name);
       return opts[(base+n)%opts.length];
     });
     return { ...pool, exercises, pool:pool.exercises };
-  },[baseLiftPicks,liftSwaps]);
+  },[baseLiftPicks,liftSwaps,day]);
 
   // Flex: base seeded picks + swap overrides
   const [baseFlexPicks] = useState(()=>
@@ -1352,12 +1434,16 @@ export default function App() {
     }))
   ,[baseFlexPicks,flexSwaps]);
 
-  const swapLift = i=>{setLiftSwaps(s=>({...s,[i]:(s[i]||0)+1}));setLiftChecked(c=>{const n={...c};delete n[i];return n;});};
+  const clearLiftCheck = i=>setLiftChecked(f=>{const pc={...(f[day.split]||{})};delete pc[i];return{...f,[day.split]:pc};});
+  const swapLift = i=>{const k=`${day.split}-${i}`;setLiftSwaps(s=>({...s,[k]:(typeof s[k]==="number"?s[k]:0)+1}));clearLiftCheck(i);};
+  const chooseLift = (i,name)=>{const k=`${day.split}-${i}`;setLiftSwaps(s=>({...s,[k]:name}));clearLiftCheck(i);};
+  const splitLiftChecked = liftChecked[day.split]||{};
+  const setSplitLiftChecked = c=>setLiftChecked(f=>({...f,[day.split]:typeof c==="function"?c(f[day.split]||{}):c}));
   const swapFlex = (pid,i)=>{const k=`${pid}-${i}`;setFlexSwaps(s=>({...s,[k]:(s[k]||0)+1}));setFlexChecked(f=>{const pc={...(f[pid]||{})};delete pc[i];return{...f,[pid]:pc};});};
 
 
   const totalItems = DAILY_ITEMS.length + SUPPLEMENTS.length + (stableLiftData?stableLiftData.exercises.length:0) + REHAB.length;
-  const totalDone  = Object.values(dailyChecked).filter(Boolean).length + Object.values(stackChecked).filter(Boolean).length + Object.values(liftChecked).filter(Boolean).length + Object.values(rehabChecked).filter(Boolean).length;
+  const totalDone  = Object.values(dailyChecked).filter(Boolean).length + Object.values(stackChecked).filter(Boolean).length + Object.values(splitLiftChecked).filter(Boolean).length + Object.values(rehabChecked).filter(Boolean).length;
   const overallPct = Math.round((totalDone/totalItems)*100);
 
   const dayLabel = day.type==="lift"
@@ -1379,6 +1465,8 @@ export default function App() {
         ::-webkit-scrollbar-track{background:#080808;}
         ::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:3px;}
         @keyframes urgentPulse{from{opacity:1;transform:scale(1);}to{opacity:0.72;transform:scale(0.95);}}
+        @keyframes cardIn{from{opacity:0;transform:translateY(10px) scale(0.98);}to{opacity:1;transform:translateY(0) scale(1);}}
+        ::-webkit-scrollbar:horizontal{height:0;}
       `}</style>
       <div style={{ background:C.bg, minHeight:"100vh", maxWidth:"480px", margin:"0 auto", paddingBottom:"80px" }}>
 
@@ -1401,10 +1489,11 @@ export default function App() {
         <div style={{ padding:"16px 20px" }}>
           {tab==="today" && <>
             {!pulseDismissed && coachPulse && <CoachPulseBrief pulse={coachPulse} onDismiss={dismissPulse}/>}
+            <WorkoutPicker override={dayOverride} onSet={setDayOverride} scheduledLabel={scheduledLabel}/>
             <DailyWisdom/>
             <DailyLog checked={dailyChecked} setChecked={setDailyChecked}/>
             <RehabSection checked={rehabChecked} setChecked={setRehabChecked} open={rehabOpen} setOpen={setRehabOpen}/>
-            {day.type==="lift" && stableLiftData && <LiftingSection data={stableLiftData} checked={liftChecked} setChecked={setLiftChecked} onSwap={swapLift} onComplete={()=>handleWorkoutComplete(stableLiftData)}/>}
+            {day.type==="lift" && stableLiftData && <LiftingSection data={stableLiftData} checked={splitLiftChecked} setChecked={setSplitLiftChecked} onSwap={swapLift} onChoose={chooseLift} onComplete={()=>handleWorkoutComplete(stableLiftData)}/>}
             {day.type==="flex" && !day.isWeekend && <WedFlexDay flexChecked={flexChecked} setFlexChecked={setFlexChecked} flexExercises={flexExercises} onFlexSwap={swapFlex}/>}
             {day.type==="flex" && day.isWeekend  && <WeekendFlexDay flexChecked={flexChecked} setFlexChecked={setFlexChecked} flexExercises={flexExercises} onFlexSwap={swapFlex}/>}
           </>}
@@ -1425,8 +1514,9 @@ export default function App() {
           </>}
 
           {tab==="lift" && <>
+            <WorkoutPicker override={dayOverride} onSet={setDayOverride} scheduledLabel={scheduledLabel}/>
             {day.type==="lift"&&stableLiftData
-              ? <LiftingSection data={stableLiftData} checked={liftChecked} setChecked={setLiftChecked} onSwap={swapLift} onComplete={()=>handleWorkoutComplete(stableLiftData)}/>
+              ? <LiftingSection data={stableLiftData} checked={splitLiftChecked} setChecked={setSplitLiftChecked} onSwap={swapLift} onChoose={chooseLift} onComplete={()=>handleWorkoutComplete(stableLiftData)}/>
               : <div style={cardBase(C.border)}>
                   <p style={mono({ fontSize:"10px", letterSpacing:"0.2em", color:C.muted, textTransform:"uppercase", marginBottom:"4px" })}>LIFTING</p>
                   <h2 style={cond({ fontSize:"22px", color:C.muted })}>{day.isWeekend?"FLEX DAY":"YOGA / CORE DAY"}</h2>
