@@ -2,7 +2,7 @@
   "name": "Charlie's Wellness",
   "short_name": "Wellness",
   "description": "Daily wellness tracker — move, fuel, rest, mind",
-  "start_url": "/",
+  "start_url": "/charlie-wellness/",
   "display": "standalone",
   "background_color": "#080808",
   "theme_color": "#080808",
