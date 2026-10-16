@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, createContext, useContext } from "react";
+import { exPhotos } from "./exercise-images.js";
 
 const speakEx = (name, note = "") => {
   if (!window.speechSynthesis) return;
@@ -17,6 +18,8 @@ const C = {
 
 // ── Exercise Pools ────────────────────────────────────────────────────────────
 const AEROBIC_POOL = ["Jumping Jacks","High Knees","Stair Jumps","Side Skaters","Squat Jumps","Mountain Climbers","Jump Rope","Side Jump Lunges","Butt Kicks"];
+
+const LOW_IMPACT_POOL = ["Speed Squats","Rapid Reverse Lunges","Low-Impact Skater Steps","Squat to Calf Raise","Speed Lateral Lunges","Kettlebell Swings","Bicycle Crunches","Glute Bridge Marches","Russian Twists"];
 
 const SNACK_CONFIG = [
   { id:1, label:"SNACK 01", name:"NEURAL WAKE-UP",   color:C.yellow, note:"Smooth start — prime the body, don't redline.", duration:60 },
@@ -219,6 +222,74 @@ const EXTRAS_POOLS = {
   },
 };
 
+// ── Bonus Library — curated anytime workouts, not tied to a daily plan ───────
+const BONUS_POOLS = {
+  shaolin: {
+    id:"shaolin", label:"SHAOLIN ISOMETRIC HOLDS", icon:"☯", color:"#FF3D1F",
+    urgency:"BONUS",
+    note:"6 bodyweight holds, no equipment. Each has a 3-week progression — start at Week 1 regardless of fitness level and let time-under-tension do the work.",
+    exercises:[
+      { name:"Hollow Body Hold",     sets:"Wk1 3×15s · Wk2 3×20s · Wk3 both legs extended", note:"Press lower back into the floor, arms extended overhead, knees bent then legs extended as you progress. Hold and breathe — don't let the lower back arch off the floor." },
+      { name:"Horse Stance",         sets:"Wk1 3×20s quarter squat · Wk2 3×30s half depth · Wk3 3×60s thighs parallel", note:"Feet wider than shoulders, toes slightly out, chest tall, spine tall. Sink lower each week — knees track over toes." },
+      { name:"Wall Sit",             sets:"Wk1 3×20s 45° · Wk2 3×30s near parallel · Wk3 3×60s thighs parallel", note:"Back flat against wall, slide down, knees stack over ankles. Press back into the wall and drive through heels." },
+      { name:"Bottom Push-Up Hold",  sets:"Wk1 3×10-15s · Wk2 3×20-30s · Wk3 3×45-60s", note:"Lower into a push-up until chest is just above the floor and hold there. Elbows ~45° from the body, stay rigid, breathe." },
+      { name:"Bear Crawl Hold",      sets:"Wk1 3×15-20s · Wk2 3×20-30s · Wk3 3×45-60s", note:"Hands under shoulders, knees hover 1-2 inches off the ground, back flat, core braced. Hold and breathe." },
+      { name:"Iron Bridge",          sets:"Wk1 3×20-30s · Wk2 3×45-60s · Wk3 3×60-90s", note:"Lie on your back, drive hips up into a bridge, squeeze glutes hard at the top. Body forms one straight line — hold and breathe." },
+    ],
+  },
+  fullbody: {
+    id:"fullbody", label:"FULL BODY STRENGTH", icon:"⬢", color:"#D4F53C",
+    urgency:"BONUS",
+    note:"Five compound lifts that cover the whole body in one session. Use whenever you want a straightforward strength day outside the normal split.",
+    exercises:[
+      { name:"Weighted Lunges",          sets:"3×10 each leg", note:"DB or barbell load. Step forward or back, control the descent, drive through the front heel to stand." },
+      { name:"Bench Press",              sets:"4×8",           note:"Shoulder blades pulled together, feet planted. Controlled descent to the chest, press explosively back up." },
+      { name:"Pull Ups",                 sets:"4×AMRAP",       note:"Full hang to chin over the bar. Control the negative — the eccentric is where most of the growth happens." },
+      { name:"Romanian Deadlift",        sets:"3×10",          note:"Soft knees, hinge at the hips, bar/DBs stay close to the legs. Feel the hamstring stretch, drive hips forward to finish." },
+      { name:"Standing Overhead Press",  sets:"3×8",           note:"Brace the core, press straight overhead. Squeeze glutes to stay stacked — don't let the lower back arch." },
+    ],
+  },
+  overall: {
+    id:"overall", label:"OVERALL BODY · MOBILITY & CARDIO", icon:"◍", color:"#00E5CC",
+    urgency:"BONUS",
+    note:"General-health staples — mobility, aerobic base, and power. Sprinkle these in throughout the week whenever you have a spare 10-20 minutes.",
+    exercises:[
+      { name:"Bar Hangs",                  sets:"3×30-45s",       note:"Dead hang from a pull-up bar, shoulders relaxed. Decompresses the spine and builds serious grip strength." },
+      { name:"Japanese Interval Walking",  sets:"5×3min fast/slow", note:"Alternate 3 minutes brisk walking with 3 minutes easy walking. Proven to improve fitness better than steady-pace walking alone." },
+      { name:"Asian Squat",                sets:"2-5 min total/day", note:"Full-depth squat, heels flat, chest up. A daily mobility reset for ankles, knees, and hips most desk-bound bodies have lost." },
+      { name:"World's Greatest Stretch",   sets:"2×5 each side",  note:"Lunge forward, drop the back hand to the floor, rotate the front elbow to the sky. Hits hips, hamstrings, and t-spine in one flow." },
+      { name:"Zone 2 Cardio",              sets:"30-45min, 2-3x/wk", note:"Easy pace — you should be able to hold a conversation. Builds the aerobic base everything else sits on." },
+      { name:"Plyometrics",                sets:"3×6-8",          note:"Box jumps, bounds, or jump squats. Focus on quiet, soft landings — power matters more than height." },
+      { name:"Loaded Carries",             sets:"3×40m",          note:"Farmer's or suitcase carry, heavy DBs/KBs. Walk tall, brace the core — grip, traps, and core all work overtime." },
+    ],
+  },
+  back: {
+    id:"back", label:"BACK & SPINE STABILITY", icon:"◫", color:"#3D8EFF",
+    urgency:"BONUS",
+    note:"Low-load spinal stability work — the kind that prevents injury rather than builds size. Great as a short standalone session or a warm-up.",
+    exercises:[
+      { name:"Reverse Hyperextension", sets:"3×12",           note:"Targets the multifidus at the base of the spine. Hinge over a bench edge, legs lift with control — no swinging." },
+      { name:"Glute Bridges",          sets:"3×15",           note:"Stabilizes the pelvis, which supports the lumbar spine. Drive through the heels, squeeze hard at the top." },
+      { name:"Dead Bug",               sets:"3×10 each side", note:"Focuses on the deep core — specifically the transversus abdominis. Lower back stays flat on the floor the entire time." },
+      { name:"Bird Dog",               sets:"3×10 each side", note:"Activates both the multifidus and the deep core together. Opposite arm/leg extend in sync, hips stay square." },
+      { name:"McGill Side Plank",      sets:"3×20-30s each side", note:"Trains the lateral chain and stabilizes the spine against rotational forces. Top hip stacked directly over the bottom." },
+    ],
+  },
+  legs: {
+    id:"legs", label:"BEST LEG EXERCISES", icon:"◭", color:"#FF8C42",
+    urgency:"BONUS",
+    note:"A leg-day add-on list — pick a few whenever you want extra volume beyond the standard LEGS/BACK split.",
+    exercises:[
+      { name:"Lateral Step Up",                  sets:"3×10 each leg", note:"Step up and over sideways onto a box or bench. Drives the glute med and outer quad through a range most leg days skip." },
+      { name:"Bulgarian Split Squat",             sets:"3×10 each leg", note:"Rear foot elevated on a bench, front leg does the work. Torso stays tall, front knee tracks over the toes." },
+      { name:"Glute Bridge with Feet Elevated",   sets:"3×15",          note:"Feet up on a bench, hips drive to full extension. The added range recruits more hamstring and glute than a floor bridge." },
+      { name:"Deficit Calf Raises",               sets:"3×15",          note:"Stand on a step so the heels drop below toe level. Full stretch at the bottom, full squeeze at the top." },
+      { name:"Farmer's Carry",                    sets:"3×40m",         note:"Heavy DB/KB in each hand, walk tall. Builds grip, trap, and core stability that transfers to every other leg lift." },
+      { name:"Tibialis Raises",                   sets:"3×20",          note:"Heels on a step edge, pull toes up toward the shins. Protects the knees and ankles by balancing out calf-dominant training." },
+    ],
+  },
+};
+
 const SUPPLEMENTS = [
   { name:"Creatine",            dose:"5g",       timing:"Morning" },
   { name:"Fish Oil",            dose:"1000mg",   timing:"With meal" },
@@ -322,6 +393,13 @@ const YOGA_PLACEHOLDER = {
   id:"yoga", label:"YOGA", color:C.purple, icon:"☽",
 };
 
+const EX_INDEX = {};
+[...LIFTING_A.exercises, ...LIFTING_B.exercises, ...REHAB,
+ ...[EXTRAS_POOLS, BONUS_POOLS, FLEX_POOLS].flatMap(g => Object.values(g).flatMap(p => p.exercises || []))
+].forEach(e => { if (!EX_INDEX[e.name]) EX_INDEX[e.name] = e; });
+
+const DemoContext = createContext(() => {});
+
 // ── Muscle map ────────────────────────────────────────────────────────────────
 const MUSCLE_REGIONS = {
   chest:      { front:"M 44,38 Q 50,34 56,38 Q 60,48 56,54 Q 50,56 44,54 Q 40,48 44,38 Z", back:null },
@@ -338,7 +416,7 @@ const MUSCLE_REGIONS = {
 const BODY_OUTLINE = "M50,8 Q58,8 62,14 Q66,20 65,28 Q68,30 68,36 Q66,40 62,42 Q64,48 62,56 Q60,60 58,68 Q62,78 62,90 Q62,100 60,108 Q58,116 55,118 Q52,120 50,118 Q48,120 45,118 Q42,116 40,108 Q38,100 38,90 Q38,78 42,68 Q40,60 38,56 Q36,48 38,42 Q34,40 32,36 Q32,30 35,28 Q34,20 38,14 Q42,8 50,8 Z";
 const HEAD     = "M50,2 Q56,2 59,7 Q62,12 60,17 Q58,22 50,23 Q42,22 40,17 Q38,12 41,7 Q44,2 50,2 Z";
 
-function MuscleMap({ activeMuscles, color }) {
+function MuscleMap({ activeMuscles, color, pulse }) {
   return (
     <div style={{ display:"flex", gap:"16px", justifyContent:"center", margin:"16px 0 8px" }}>
       {["front","back"].map(side => (
@@ -346,7 +424,7 @@ function MuscleMap({ activeMuscles, color }) {
           <svg width="60" height="130" viewBox="0 0 100 130">
             <path d={HEAD} fill="#1e1e1e" stroke="#2a2a2a" strokeWidth="1"/>
             <path d={BODY_OUTLINE} fill="#1e1e1e" stroke="#2a2a2a" strokeWidth="1"/>
-            {activeMuscles.map(m => { const d = MUSCLE_REGIONS[m]?.[side]; return d ? <path key={m} d={d} fill={color} opacity="0.75" style={{ filter:`drop-shadow(0 0 4px ${color}88)` }}/> : null; })}
+            {activeMuscles.map(m => { const d = MUSCLE_REGIONS[m]?.[side]; return d ? <path key={m} d={d} fill={color} opacity="0.75" style={{ filter:`drop-shadow(0 0 ${pulse?8:4}px ${color}88)`, animation:pulse?"musclePulse 1.5s ease-in-out infinite":"none" }}/> : null; })}
           </svg>
           <div style={{ fontFamily:"'DM Mono',monospace", fontSize:"8px", color:"#444", letterSpacing:"0.1em", textTransform:"uppercase", marginTop:"2px" }}>{side}</div>
         </div>
@@ -420,7 +498,36 @@ const pickBalanced = (pool, salt="") => {
     return seededShuffle(options, getDaySeed(salt + cat))[0];
   }).filter(Boolean);
 };
-const dealHiit = () => { const nine = pick(AEROBIC_POOL, 9, "hiit"); return [nine.slice(0,3), nine.slice(3,6), nine.slice(6,9)]; };
+// Core-pattern moves that must never share a snack section together
+const HIIT_CORE_MOVES = ["Bicycle Crunches","Glute Bridge Marches","Russian Twists"];
+
+const dealHiit = (mode="high") => {
+  let pool;
+  if (mode==="low") pool = LOW_IMPACT_POOL;
+  else if (mode==="mixed") pool = [...AEROBIC_POOL, ...LOW_IMPACT_POOL];
+  else pool = AEROBIC_POOL;
+
+  const core = pool.filter(e => HIIT_CORE_MOVES.includes(e));
+  const power = pool.filter(e => !HIIT_CORE_MOVES.includes(e));
+  const coreShuffled = seededShuffle(core, getDaySeed("hiitcore"+mode));
+  const powerShuffled = seededShuffle(power, getDaySeed("hiitpower"+mode));
+
+  // low mode: always feature all 3 core moves, one per section. mixed: 1-2 for variety. high: none exist.
+  const coreCount = mode==="low" ? Math.min(3, coreShuffled.length)
+    : Math.min(coreShuffled.length, 1 + (getDaySeed("hiitcorecount"+mode) % 2));
+  const chosenCore = coreShuffled.slice(0, coreCount);
+  const chosenPower = powerShuffled.slice(0, 9 - chosenCore.length);
+
+  const groups = [[],[],[]];
+  chosenCore.forEach((ex,i) => groups[i % 3].push(ex));
+  let gi = 0;
+  chosenPower.forEach(ex => {
+    while (groups[gi].length >= 3) gi = (gi+1) % 3;
+    groups[gi].push(ex);
+    gi = (gi+1) % 3;
+  });
+  return groups.map((g,i) => seededShuffle(g, getDaySeed("hiitorder"+mode+i)));
+};
 
 const getDayPlan = () => {
   const d = new Date().getDay();
@@ -444,6 +551,73 @@ const cardBase = (accent, allDone=false) => ({
   animation:"cardIn 0.45s cubic-bezier(0.22,1.2,0.36,1) both",
 });
 
+// ── Countdown FX — audio ticks, haptics, screen wake-lock ────────────────────
+let _audioCtx = null;
+const getAudioCtx = () => {
+  if (!_audioCtx) { try { _audioCtx = new (window.AudioContext||window.webkitAudioContext)(); } catch { return null; } }
+  if (_audioCtx.state === "suspended") { try { _audioCtx.resume(); } catch {} }
+  return _audioCtx;
+};
+const playTone = (freq, duration=0.09, type="sine", gain=0.16) => {
+  const ctx = getAudioCtx(); if(!ctx) return;
+  const osc = ctx.createOscillator(), g = ctx.createGain();
+  osc.type = type; osc.frequency.value = freq;
+  g.gain.setValueAtTime(gain, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+duration);
+  osc.connect(g); g.connect(ctx.destination);
+  osc.start(); osc.stop(ctx.currentTime+duration);
+};
+const playTick = () => playTone(880, 0.08, "square", 0.12);
+const playChime = () => { playTone(660,0.14,"sine",0.16); setTimeout(()=>playTone(880,0.16,"sine",0.16),110); setTimeout(()=>playTone(1320,0.3,"sine",0.18),230); };
+const vibrate = (pattern) => { try { navigator.vibrate && navigator.vibrate(pattern); } catch {} };
+
+function useWakeLock(active) {
+  const lockRef = useRef(null);
+  useEffect(() => {
+    let cancelled = false;
+    const release = () => { try { lockRef.current?.release?.(); } catch {} lockRef.current = null; };
+    const request = async () => {
+      try { if ("wakeLock" in navigator) lockRef.current = await navigator.wakeLock.request("screen"); } catch {}
+    };
+    if (active) request(); else release();
+    const onVisible = () => { if (active && document.visibilityState==="visible" && !cancelled) request(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { cancelled = true; document.removeEventListener("visibilitychange", onVisible); release(); };
+  }, [active]);
+}
+
+const hexToRgb = h => { const n = parseInt(h.replace("#",""),16); return [(n>>16)&255,(n>>8)&255,n&255]; };
+const mixColor = (hexA, hexB, t) => {
+  const a=hexToRgb(hexA), b=hexToRgb(hexB), m=Math.max(0,Math.min(1,t));
+  const mixed = a.map((v,i)=>Math.round(v+(b[i]-v)*m));
+  return `rgb(${mixed[0]},${mixed[1]},${mixed[2]})`;
+};
+
+function CountdownRing({ progress, color, size=260, urgent }) {
+  const r = (size-16)/2, cx=size/2, cy=size/2, circumference = 2*Math.PI*r;
+  const dashOffset = circumference*(1-progress);
+  const ringColor = mixColor(color, C.red, progress);
+  return (
+    <svg width={size} height={size} style={{ position:"absolute", top:"50%", left:"50%", transform:"translate(-50%,-50%) rotate(-90deg)" }}>
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke={C.dim} strokeWidth="4"/>
+      {progress>0 && <circle cx={cx} cy={cy} r={r} fill="none" stroke={ringColor} strokeWidth="4" strokeLinecap="round"
+        strokeDasharray={circumference} strokeDashoffset={dashOffset}
+        style={{ transition:"stroke-dashoffset 1s linear, stroke 1s linear", filter:`drop-shadow(0 0 ${urgent?14:8}px ${ringColor})` }}/>}
+    </svg>
+  );
+}
+
+function useCountdownFX(running, timeLeft, done) {
+  const prevDone = useRef(false);
+  useEffect(() => {
+    if (running && timeLeft>0 && timeLeft<=3) { playTick(); vibrate(30); }
+  }, [running, timeLeft]);
+  useEffect(() => {
+    if (done && !prevDone.current) { playChime(); vibrate([40,60,40,60,120]); }
+    prevDone.current = done;
+  }, [done]);
+}
+
 function useTimer(duration) {
   const [timeLeft,setTimeLeft] = useState(duration);
   const [running,setRunning]   = useState(false);
@@ -462,9 +636,74 @@ function useTimer(duration) {
 
 function DoneBadge({ color }) {
   return (
-    <div style={{ position:"absolute", top:"16px", right:"16px", background:`${color}14`, border:`1px solid ${color}44`, borderRadius:"20px", padding:"4px 12px", display:"flex", alignItems:"center", gap:"6px" }}>
-      <div style={{ width:"5px", height:"5px", borderRadius:"50%", background:color, boxShadow:`0 0 6px ${color}` }}/>
-      <span style={mono({ fontSize:"10px", color, letterSpacing:"0.12em" })}>COMPLETE</span>
+    <>
+      <div style={{ position:"absolute", top:"-10px", right:"-10px", width:"100px", height:"100px", borderRadius:"50%", background:`radial-gradient(circle, ${color}18 0%, transparent 70%)`, animation:"burst 1s ease-out forwards", pointerEvents:"none" }}/>
+      <div style={{ position:"absolute", top:"16px", right:"16px", background:`${color}14`, border:`1px solid ${color}44`, borderRadius:"20px", padding:"4px 12px", display:"flex", alignItems:"center", gap:"6px", animation:"fadeIn 0.4s ease" }}>
+        <div style={{ width:"5px", height:"5px", borderRadius:"50%", background:color, boxShadow:`0 0 6px ${color}` }}/>
+        <span style={mono({ fontSize:"10px", color, letterSpacing:"0.12em" })}>COMPLETE</span>
+      </div>
+    </>
+  );
+}
+
+function DemoFrames({ name, color, animate=true }) {
+  const srcs = exPhotos(name);
+  const [frame, setFrame] = useState(0);
+  useEffect(() => {
+    if (!srcs || !animate) return;
+    const id = setInterval(() => setFrame(f => 1 - f), 1100);
+    return () => clearInterval(id);
+  }, [name, animate]);
+  if (!srcs) return null;
+  return (
+    <div style={{ position:"relative", width:"100%", aspectRatio:"3 / 2", borderRadius:"12px", overflow:"hidden", background:"#000", border:`1px solid ${color}33`, flexShrink:0 }}>
+      {srcs.map((s,i)=>(
+        <img key={s} src={s} alt={`${name} ${i?"end":"start"} position`} loading="lazy"
+          style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", opacity:frame===i?1:0, transition:"opacity 0.45s ease" }}/>
+      ))}
+      <div style={{ position:"absolute", left:"10px", bottom:"8px", display:"flex", gap:"6px" }}>
+        {["START","END"].map((l,i)=>(
+          <span key={l} style={{ ...mono({ fontSize:"8px", letterSpacing:"0.12em", fontWeight:700 }), padding:"3px 8px", borderRadius:"10px", background:frame===i?color:"rgba(0,0,0,0.6)", color:frame===i?"#000":"#aaa", transition:"all 0.3s" }}>{l}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DemoThumb({ name, color, size=40 }) {
+  const openDemo = useContext(DemoContext);
+  const srcs = exPhotos(name);
+  if (!srcs) return null;
+  return (
+    <button onClick={e=>{e.stopPropagation();openDemo(name,color);}} onPointerDown={e=>e.stopPropagation()} aria-label={`Show ${name} demo`}
+      style={{ width:size, height:size, flexShrink:0, padding:0, borderRadius:"8px", overflow:"hidden", border:`1px solid ${color}44`, background:"#000", cursor:"pointer" }}>
+      <img src={srcs[1]} alt="" loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}/>
+    </button>
+  );
+}
+
+function DemoViewer({ name, color, onClose }) {
+  const ex = EX_INDEX[name] || { name };
+  useEffect(() => {
+    const onKey = e => { if (e.key==="Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+  return (
+    <div onClick={onClose} style={{ position:"fixed", inset:0, zIndex:10000, background:"rgba(0,0,0,0.88)", backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)", display:"flex", alignItems:"center", justifyContent:"center", padding:"calc(env(safe-area-inset-top) + 20px) 16px calc(env(safe-area-inset-bottom) + 20px)", animation:"fadeIn 0.2s ease" }}>
+      <div onClick={e=>e.stopPropagation()} style={{ width:"100%", maxWidth:"440px", maxHeight:"100%", overflowY:"auto", background:C.card, border:`1px solid ${color}33`, borderRadius:"18px", padding:"18px", boxShadow:`0 20px 60px #000, 0 0 40px ${color}22` }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:"12px", marginBottom:"12px" }}>
+          <div>
+            <p style={mono({ fontSize:"9px", letterSpacing:"0.2em", color, marginBottom:"4px" })}>HOW TO</p>
+            <h2 style={cond({ fontSize:"24px", color:C.text, lineHeight:1.1 })}>{ex.name}</h2>
+            {ex.sets && <p style={mono({ fontSize:"11px", color:C.soft, marginTop:"4px" })}>{ex.sets}</p>}
+          </div>
+          <button onClick={onClose} aria-label="Close" style={{ ...mono({ fontSize:"14px" }), width:"34px", height:"34px", borderRadius:"50%", border:`1px solid ${C.muted}`, background:"transparent", color:C.soft, cursor:"pointer", flexShrink:0 }}>✕</button>
+        </div>
+        <DemoFrames name={name} color={color}/>
+        {ex.note && <p style={body({ fontSize:"14px", color:"#999", lineHeight:1.6, marginTop:"14px" })}>{ex.note}</p>}
+        <button onClick={()=>speakEx(ex.name, ex.note)} style={{ ...smallBtn(color,true), marginTop:"14px", width:"100%", padding:"12px" }}>🔊 HEAR CUES</button>
+      </div>
     </div>
   );
 }
@@ -500,7 +739,8 @@ function SwipeRow({ label, sublabel, checked, onToggle, onSwap, onAudio, color, 
         <div style={{ width:"22px", height:"22px", borderRadius:"5px", flexShrink:0, border:`1.5px solid ${checked?color:C.muted}`, background:checked?color:"transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.25s", boxShadow:checked?`0 0 10px ${color}55`:"none" }}>
           {checked && <span style={{ color:"#000", fontSize:"12px", fontWeight:900 }}>✓</span>}
         </div>
-        <div style={{ flex:1 }}>
+        <DemoThumb name={label} color={color}/>
+        <div style={{ flex:1, cursor:(onSwap&&!checked)?"pointer":undefined }} onClick={()=>{ if(onSwap&&!checked&&!dragging&&dragX===0) onSwap(); }}>
           <div style={body({ fontSize:"15px", fontWeight:500, color:checked?"#4a4a4a":"#d0d0d0", textDecoration:checked?"line-through":"none", transition:"color 0.3s" })}>{label}</div>
           {sublabel && <div style={mono({ fontSize:"11px", color:checked?"#3a3a3a":"#777", marginTop:"3px", letterSpacing:"0.05em", transition:"color 0.3s" })}>{sublabel}</div>}
         </div>
@@ -524,10 +764,12 @@ function smallBtn(color,active){ return { ...mono({ fontSize:"11px", letterSpaci
 function ActiveMode({ config, exercises, onClose }) {
   const t = useTimer(config.duration);
   const urgent = t.running&&t.timeLeft<=10;
+  useCountdownFX(t.running, t.timeLeft, t.done);
+  useWakeLock(t.running);
   return (
     <div style={{ position:"fixed", inset:0, zIndex:999, background:C.bg, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"40px 28px", maxWidth:"480px", margin:"0 auto" }}>
       <div style={{ position:"absolute", inset:0, pointerEvents:"none", background:`radial-gradient(ellipse at 50% 35%,${config.color}${t.running?"1a":"0a"} 0%,transparent 60%)`, transition:"background 0.6s" }}/>
-      <button onClick={onClose} style={{ position:"absolute", top:"24px", left:"20px", ...mono({ fontSize:"11px", letterSpacing:"0.1em" }), background:"transparent", border:`1px solid ${C.muted}`, color:C.soft, borderRadius:"8px", padding:"7px 16px", cursor:"pointer" }}>← BACK</button>
+      <button onClick={onClose} style={{ position:"absolute", top:"calc(env(safe-area-inset-top) + 20px)", left:"20px", zIndex:2, ...mono({ fontSize:"11px", letterSpacing:"0.1em" }), background:"transparent", border:`1px solid ${C.muted}`, color:C.soft, borderRadius:"8px", padding:"7px 16px", cursor:"pointer" }}>← BACK</button>
       <div style={{ textAlign:"center", marginBottom:"16px", zIndex:1 }}>
         <p style={mono({ fontSize:"10px", color:config.color, letterSpacing:"0.25em", marginBottom:"8px" })}>{config.label}</p>
         <h1 style={cond({ fontSize:"38px", color:config.color, textShadow:`0 0 40px ${config.color}66` })}>{config.name}</h1>
@@ -536,20 +778,22 @@ function ActiveMode({ config, exercises, onClose }) {
         {exercises.map((ex,i)=>(
           <div key={i} style={{ display:"flex", alignItems:"center", gap:"8px" }}>
             <span style={mono({ fontSize:"10px", color:C.muted })}>{i+1}</span>
+            <DemoThumb name={ex} color={config.color} size={32}/>
             <span style={{ ...body({ fontSize:"18px", fontWeight:500, transition:"color 0.3s" }), color:t.running?"#aaa":C.soft, flex:1, lineHeight:2.1 }}>{ex}</span>
             <button onClick={()=>speakEx(ex)} style={{ ...mono({ fontSize:"13px" }), width:"28px", height:"28px", borderRadius:"50%", border:`1px solid ${config.color}22`, background:"transparent", color:config.color+"55", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, padding:0, lineHeight:1 }}>🔊</button>
           </div>
         ))}
       </div>
-      <div style={{ zIndex:1, textAlign:"center", marginBottom:"16px" }}>
+      <div style={{ zIndex:1, textAlign:"center", marginBottom:"16px", position:"relative", width:"280px", height:"280px", display:"flex", alignItems:"center", justifyContent:"center" }}>
+        {!t.done && <CountdownRing progress={t.progress} color={config.color} size={280} urgent={urgent}/>}
         {t.done ? (
-          <><div style={cond({ fontSize:"80px", color:config.color, textShadow:`0 0 60px ${config.color}88`, lineHeight:1 })}>DONE</div><p style={body({ fontSize:"15px", color:"#777", marginTop:"12px" })}>Great work. Rest up.</p></>
+          <div><div style={cond({ fontSize:"80px", color:config.color, textShadow:`0 0 60px ${config.color}88`, lineHeight:1 })}>DONE</div><p style={body({ fontSize:"15px", color:"#777", marginTop:"12px" })}>Great work. Rest up.</p></div>
         ) : (
-          <div style={{ display:"flex", alignItems:"baseline", justifyContent:"center", gap:"2px" }}>
-            <span style={cond({ fontSize:urgent?"124px":"104px", color:t.running?config.color:"#ccc", textShadow:t.running?`0 0 60px ${config.color}${urgent?"bb":"44"}`:"none", lineHeight:1, transition:"font-size 0.12s,color 0.3s", animation:urgent?"urgentPulse 0.35s ease-in-out infinite alternate":"none" })}>{t.mins}</span>
-            <span style={cond({ fontSize:"64px", color:C.muted, lineHeight:1, marginBottom:"8px" })}>:</span>
+          <div style={{ display:"flex", alignItems:"baseline", justifyContent:"center", gap:"2px", zIndex:1 }}>
+            <span style={cond({ fontSize:urgent?"96px":"84px", color:t.running?config.color:"#ccc", textShadow:t.running?`0 0 60px ${config.color}${urgent?"bb":"44"}`:"none", lineHeight:1, transition:"font-size 0.12s,color 0.3s", animation:urgent?"urgentPulse 0.35s ease-in-out infinite alternate":"none" })}>{t.mins}</span>
+            <span style={cond({ fontSize:"52px", color:C.muted, lineHeight:1, marginBottom:"6px" })}>:</span>
             {t.secs.toString().padStart(2,"0").split("").map((d,i)=>(
-              <span key={`${i}-${d}`} style={cond({ fontSize:urgent?"124px":"104px", color:t.running?config.color:"#ccc", textShadow:t.running?`0 0 60px ${config.color}${urgent?"bb":"44"}`:"none", lineHeight:1, transition:"font-size 0.12s", animation:urgent?`urgentPulse 0.35s ${i*0.07}s ease-in-out infinite alternate`:"none" })}>{d}</span>
+              <span key={`${i}-${d}`} style={cond({ fontSize:urgent?"96px":"84px", color:t.running?config.color:"#ccc", textShadow:t.running?`0 0 60px ${config.color}${urgent?"bb":"44"}`:"none", lineHeight:1, transition:"font-size 0.12s", animation:urgent?`urgentPulse 0.35s ${i*0.07}s ease-in-out infinite alternate`:"none" })}>{d}</span>
             ))}
           </div>
         )}
@@ -589,7 +833,7 @@ function LiftWorkoutMode({ data, checked, setChecked, onClose, onComplete }) {
   return (
     <div style={{ position:"fixed", inset:0, zIndex:998, background:C.bg, display:"flex", flexDirection:"column", maxWidth:"480px", margin:"0 auto" }}>
       <div style={{ position:"absolute", inset:0, pointerEvents:"none", background:`radial-gradient(ellipse at 50% 25%,${data.color}12 0%,transparent 55%)` }}/>
-      <div style={{ padding:"24px 20px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", zIndex:1 }}>
+      <div style={{ padding:"calc(env(safe-area-inset-top) + 20px) 20px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", zIndex:1 }}>
         <button onClick={onClose} style={{ ...mono({ fontSize:"11px", letterSpacing:"0.1em" }), background:"transparent", border:`1px solid ${C.muted}`, color:C.soft, borderRadius:"8px", padding:"7px 16px", cursor:"pointer" }}>← BACK</button>
         <div style={{ display:"flex", gap:"6px" }}>
           {data.exercises.map((_,i)=><div key={i} style={{ width:"6px", height:"6px", borderRadius:"50%", background:checked[i]?data.color:(i===idx||(supersetMode&&i===supersetPartnerIdx))?data.color+"66":C.muted, transition:"all 0.3s", boxShadow:(i===idx||(supersetMode&&i===supersetPartnerIdx))?`0 0 6px ${data.color}`:"none" }}/>)}
@@ -612,7 +856,7 @@ function LiftWorkoutMode({ data, checked, setChecked, onClose, onComplete }) {
           </div>
         </div>
       ):(
-        <div style={{ flex:1, display:"flex", flexDirection:"column", padding:"0 28px 28px", zIndex:1 }}>
+        <div style={{ flex:1, minHeight:0, display:"flex", flexDirection:"column", padding:"0 28px calc(env(safe-area-inset-bottom) + 20px)", zIndex:1 }}>
           {supersetMode && nextEx ? (
             <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center", gap:"12px" }}>
               {[{e:ex,label:"A — PRIMARY"},{e:nextEx,label:"B — SUPERSET"}].map(({e,label})=>(
@@ -626,16 +870,20 @@ function LiftWorkoutMode({ data, checked, setChecked, onClose, onComplete }) {
               ))}
             </div>
           ) : (
-            <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center" }}>
+            <div style={{ flex:1, minHeight:0, overflowY:"auto", display:"flex", flexDirection:"column" }}>
+             <div style={{ margin:"auto 0" }}>
               <p style={mono({ fontSize:"10px", color:data.color, letterSpacing:"0.25em", marginBottom:"12px" })}>EXERCISE {idx+1} OF {data.exercises.length}</p>
               <h1 style={cond({ fontSize:"42px", color:data.color, lineHeight:1.1, textShadow:`0 0 40px ${data.color}55`, marginBottom:"16px" })}>{ex.name}</h1>
               <span style={{ ...mono({ fontSize:"13px", color:C.text }), background:`${data.color}18`, border:`1px solid ${data.color}33`, borderRadius:"8px", padding:"6px 14px", display:"inline-block", marginBottom:"16px" }}>{ex.sets}</span>
               <p style={body({ fontSize:"15px", color:"#888", lineHeight:1.7, fontStyle:"italic" })}>{ex.note}</p>
               <button onClick={()=>speakEx(ex.name,ex.note)} style={{ ...mono({ fontSize:"11px" }), marginTop:"10px", padding:"6px 16px", borderRadius:"8px", border:`1px solid ${data.color}28`, background:"transparent", color:data.color+"66", cursor:"pointer", display:"inline-flex", alignItems:"center", gap:"6px" }}>🔊 <span>HEAR CUES</span></button>
-              <MuscleMap activeMuscles={ex.muscles||[]} color={data.color}/>
+              {exPhotos(ex.name)
+                ? <div style={{ margin:"16px 0 12px" }}><DemoFrames name={ex.name} color={data.color}/></div>
+                : <MuscleMap activeMuscles={ex.muscles||[]} color={data.color} pulse/>}
+             </div>
             </div>
           )}
-          <div style={{ display:"flex", gap:"10px" }}>
+          <div style={{ display:"flex", gap:"10px", paddingTop:"12px", flexShrink:0 }}>
             {idx>0&&<button onClick={()=>setIdx(i=>i-1)} style={{ ...smallBtn(C.muted,false), flex:1 }}>← PREV</button>}
             <button onClick={markAndNext} style={{ ...bigBtn(data.color,false), flex:2, padding:"16px 0" }}>{supersetMode&&nextEx?"DONE BOTH ✓":checked[idx]?"NEXT →":"DONE ✓"}</button>
           </div>
@@ -660,6 +908,8 @@ function SnackCard({ config, exercises, timerState, setTimerState }) {
   const reset = ()=>{ clearInterval(ref.current); setTimerState({timeLeft:config.duration,running:false,done:false}); };
   const mins=Math.floor(timeLeft/60), secs=timeLeft%60;
   const progress=(config.duration-timeLeft)/config.duration;
+  useCountdownFX(running, timeLeft, done);
+  useWakeLock(running);
   if(activeMode) return <ActiveMode config={config} exercises={exercises} onClose={()=>setActiveMode(false)}/>;
   return (
     <div style={{ ...cardBase(config.color,done), border:`1.5px solid ${running?config.color:done?config.color+"55":config.color+"22"}` }}>
@@ -675,6 +925,7 @@ function SnackCard({ config, exercises, timerState, setTimerState }) {
         {exercises.map((ex,i)=>(
           <div key={i} style={{ display:"flex", gap:"10px", alignItems:"center", padding:"6px 0", borderBottom:i<2?`1px solid ${C.dim}`:"none" }}>
             <span style={mono({ fontSize:"10px", color:C.muted, minWidth:"14px" })}>{i+1}</span>
+            <DemoThumb name={ex} color={config.color} size={32}/>
             <span style={{ ...body({ fontSize:"15px", color:"#c8c8c8", fontWeight:500 }), flex:1 }}>{ex}</span>
             <button onClick={()=>speakEx(ex)} style={{ ...mono({ fontSize:"13px" }), width:"26px", height:"26px", borderRadius:"50%", border:`1px solid ${config.color}22`, background:"transparent", color:config.color+"55", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, padding:0, lineHeight:1 }}>🔊</button>
           </div>
@@ -752,7 +1003,7 @@ function LiftingSection({ data, checked, setChecked, onSwap, onChoose, onComplet
         </div>
       </div>
       {!collapsed&&<>
-        <p style={mono({ fontSize:"11px", color:"#777", margin:"10px 0 14px" })}>5 of {data.pool.length} · randomized · tap ⟳ for options · {done}/{data.exercises.length} done</p>
+        <p style={mono({ fontSize:"11px", color:"#777", margin:"10px 0 14px" })}>5 of {data.pool.length} · randomized · tap any exercise to swap it · {done}/{data.exercises.length} done</p>
         <MuscleMap activeMuscles={activeMuscles} color={data.color}/>
         <p style={mono({ fontSize:"9px", color:"#444", letterSpacing:"0.1em", textAlign:"center", marginBottom:"14px" })}>MUSCLES TODAY</p>
         <ScienceCue category={cueCat} color={data.color}/>
@@ -1121,7 +1372,7 @@ function PRProofBoard({ prWeights }) {
 }
 
 // ── Urgency badge + ExtrasPoolCard ────────────────────────────────────────────
-const URGENCY_COLORS = { CRITICAL:C.red, HIGH:C.orange, MEDIUM:C.teal };
+const URGENCY_COLORS = { CRITICAL:C.red, HIGH:C.orange, MEDIUM:C.teal, BONUS:C.purple };
 function UrgencyBadge({ level }) {
   const c = URGENCY_COLORS[level]||C.muted;
   return (
@@ -1188,6 +1439,32 @@ function WorkoutPicker({ override, onSet, scheduledLabel }) {
           const active = override===o.id;
           return (
             <button key={String(o.id)} onClick={()=>onSet(o.id)}
+              style={{ ...mono({ fontSize:"10px", letterSpacing:"0.1em", fontWeight:700 }), flexShrink:0, padding:"8px 14px", borderRadius:"8px",
+                border:`1.5px solid ${active?o.c:C.muted}`, background:active?o.c+"1a":"transparent", color:active?o.c:"#777",
+                cursor:"pointer", transition:"all 0.2s", boxShadow:active?`0 0 10px ${o.c}33`:"none" }}>
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ImpactPicker({ mode, onSet }) {
+  const opts = [
+    { id:"high",  label:"HIGH-IMPACT",  c:C.red    },
+    { id:"low",   label:"LOW-IMPACT",   c:C.teal   },
+    { id:"mixed", label:"MIXED",        c:C.purple },
+  ];
+  return (
+    <div style={{ marginBottom:"14px" }}>
+      <p style={mono({ fontSize:"9px", letterSpacing:"0.2em", color:"#555", marginBottom:"8px" })}>IMPACT LEVEL</p>
+      <div style={{ display:"flex", gap:"6px", overflowX:"auto", WebkitOverflowScrolling:"touch" }}>
+        {opts.map(o=>{
+          const active = mode===o.id;
+          return (
+            <button key={o.id} onClick={()=>onSet(o.id)}
               style={{ ...mono({ fontSize:"10px", letterSpacing:"0.1em", fontWeight:700 }), flexShrink:0, padding:"8px 14px", borderRadius:"8px",
                 border:`1.5px solid ${active?o.c:C.muted}`, background:active?o.c+"1a":"transparent", color:active?o.c:"#777",
                 cursor:"pointer", transition:"all 0.2s", boxShadow:active?`0 0 10px ${o.c}33`:"none" }}>
@@ -1306,28 +1583,6 @@ function usePR() {
   return [pr, setPR];
 }
 
-// ── HIIT usage — weekly reset, keyed by Monday's date ────────────────────────
-const getMondayKey = () => {
-  const d = new Date();
-  const diff = d.getDay() === 0 ? -6 : 1 - d.getDay();
-  const mon = new Date(d);
-  mon.setDate(d.getDate() + diff);
-  return `cw-hiit-${mon.getFullYear()}-${mon.getMonth()+1}-${mon.getDate()}`;
-};
-const readHiitUsage = () => { try { return JSON.parse(localStorage.getItem(getMondayKey()) || "[]"); } catch { return []; } };
-const writeHiitUsage = (val) => { try { localStorage.setItem(getMondayKey(), JSON.stringify(val)); } catch {} };
-function useHiitUsage() {
-  const [usage, setUsageState] = useState(readHiitUsage);
-  const setUsage = (updater) => {
-    setUsageState(prev => {
-      const next = typeof updater === "function" ? updater(prev) : updater;
-      writeHiitUsage(next);
-      return next;
-    });
-  };
-  return [usage, setUsage];
-}
-
 // ── Streak — consecutive days with ≥5/7 daily log items checked ──────────────
 const calcStreak = () => {
   let streak = 0;
@@ -1372,14 +1627,19 @@ export default function App() {
   );
   const [rehabOpen, setRehabOpen] = useState(false);
   const [prWeights, setPRWeights] = usePR();
-  const [hiitUsage, setHiitUsage] = useHiitUsage();
   const [extrasChecked, setExtrasChecked] = usePersisted("extras", {});
   const [extrasOpen, setExtrasOpen] = useState(null);
+  const [bonusChecked, setBonusChecked] = usePersisted("bonus", {});
+  const [bonusOpen, setBonusOpen] = useState(null);
+  const [demo, setDemo] = useState(null);
+  const openDemo = useMemo(() => (name, color) => setDemo({ name, color }), []);
   const [showCinematic, setShowCinematic] = useState(false);
   const [cinematicData, setCinematicData] = useState(null);
   const [showRPE, setShowRPE] = useState(false);
   const coachPulse = useCoachPulse();
   const [pulseDismissed, setPulseDismissed] = useState(false);
+  const [theme, setTheme] = useState(()=>localStorage.getItem("cw-theme")||"black");
+  useEffect(()=>localStorage.setItem("cw-theme",theme),[theme]);
   const handleWorkoutComplete = (data) => { setCinematicData(data); setShowCinematic(true); };
   const handleCinematicDone = () => { setShowCinematic(false); setShowRPE(true); };
   const handleRPE = (val) => {
@@ -1395,7 +1655,8 @@ export default function App() {
     if (coachPulse?.dismissKey) { try { localStorage.setItem(coachPulse.dismissKey,"1"); } catch {} }
   };
 
-  const [hiitExercises] = useState(()=>dealHiit());
+  const [impactMode, setImpactMode] = usePersisted("impactMode", "high");
+  const hiitExercises = useMemo(()=>dealHiit(impactMode), [impactMode]);
 
   // Lift: base seeded picks + swap overrides
   const baseLiftPicks = useMemo(()=>{
@@ -1454,23 +1715,27 @@ export default function App() {
     : day.isWeekend?C.orange:C.purple;
 
   return (
-    <>
+    <DemoContext.Provider value={openDemo}>
+      {demo && <DemoViewer name={demo.name} color={demo.color||C.yellow} onClose={()=>setDemo(null)}/>}
       {showCinematic && cinematicData && <SessionCinematic data={cinematicData} onDone={handleCinematicDone}/>}
       {showRPE && <RPECapture onSubmit={handleRPE}/>}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
         *{box-sizing:border-box;margin:0;padding:0;}
-        html,body{background:#080808;}
+        html,body{background:${theme==="midnight"?"#0a0e18":"#080808"};overflow-x:hidden;width:100%;}
         ::-webkit-scrollbar{width:3px;}
         ::-webkit-scrollbar-track{background:#080808;}
         ::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:3px;}
         @keyframes urgentPulse{from{opacity:1;transform:scale(1);}to{opacity:0.72;transform:scale(0.95);}}
         @keyframes cardIn{from{opacity:0;transform:translateY(10px) scale(0.98);}to{opacity:1;transform:translateY(0) scale(1);}}
+        @keyframes burst{0%{transform:scale(0.5);opacity:0.8;}100%{transform:scale(2.5);opacity:0;}}
+        @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+        @keyframes musclePulse{0%,100%{opacity:0.6;}50%{opacity:1;}}
         ::-webkit-scrollbar:horizontal{height:0;}
       `}</style>
-      <div style={{ background:C.bg, minHeight:"100vh", maxWidth:"480px", margin:"0 auto", paddingBottom:"80px" }}>
+      <div style={{ background:theme==="midnight"?"#0a0e18":C.bg, minHeight:"100vh", maxWidth:"480px", margin:"0 auto", paddingBottom:"80px", overflowX:"hidden" }}>
 
-        <div style={{ padding:"28px 20px 16px", borderBottom:`1px solid ${C.dim}` }}>
+        <div style={{ padding:"calc(env(safe-area-inset-top) + 20px) 20px 16px", borderBottom:`1px solid ${C.dim}`, position:"relative" }}>
           <p style={mono({ fontSize:"11px", color:"#666", letterSpacing:"0.2em", marginBottom:"6px" })}>{today.toUpperCase()}</p>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
             <div>
@@ -1480,6 +1745,7 @@ export default function App() {
             </div>
             <ArcRing pct={overallPct} color={overallPct===100?C.yellow:C.teal} size={80}/>
           </div>
+          <button onClick={()=>setTheme(t=>t==="midnight"?"black":"midnight")} style={{ position:"absolute", top:"calc(env(safe-area-inset-top) + 20px)", right:"20px", background:"transparent", border:"none", cursor:"pointer", fontSize:"16px", opacity:0.4, transition:"opacity 0.2s" }} title="Toggle theme">{theme==="midnight"?"☀":"☽"}</button>
         </div>
 
         <div style={{ display:"flex", gap:"6px", padding:"12px 20px", borderBottom:`1px solid ${C.dim}`, overflowX:"auto" }}>
@@ -1502,9 +1768,10 @@ export default function App() {
             <div style={{ marginBottom:"20px" }}>
               <p style={mono({ fontSize:"10px", letterSpacing:"0.2em", color:C.yellow, textTransform:"uppercase", marginBottom:"4px" })}>HIIT SNACKS</p>
               <h2 style={cond({ fontSize:"32px", color:C.yellow, textShadow:`0 0 30px ${C.yellow}55` })}>3 MICRO-SESSIONS</h2>
-              <p style={body({ fontSize:"14px", color:"#888", marginTop:"8px", lineHeight:1.6 })}>Aerobic only · unique per snack · 1 min each</p>
+              <p style={body({ fontSize:"14px", color:"#888", marginTop:"8px", lineHeight:1.6 })}>{impactMode==="low"?"Low-impact only":impactMode==="mixed"?"High + low mixed":"High-impact aerobic"} · unique per snack · 1 min each</p>
               <p style={mono({ fontSize:"11px", color:"#555", marginTop:"6px" })}>Tap ⛶ for fullscreen mode</p>
             </div>
+            <ImpactPicker mode={impactMode} onSet={setImpactMode}/>
             {SNACK_CONFIG.map((cfg,i)=>(
               <SnackCard key={cfg.id} config={cfg} exercises={hiitExercises[i]}
                 timerState={timerStates[cfg.id]}
@@ -1543,6 +1810,21 @@ export default function App() {
                 onToggle={()=>setExtrasOpen(o=>o===pool.id?null:pool.id)}
               />
             ))}
+
+            <div style={{ margin:"28px 0 20px" }}>
+              <p style={mono({ fontSize:"10px", letterSpacing:"0.2em", color:C.purple, textTransform:"uppercase", marginBottom:"4px" })}>ANYTIME · NO SCHEDULE</p>
+              <h2 style={cond({ fontSize:"32px", color:C.purple, textShadow:`0 0 30px ${C.purple}55` })}>BONUS LIBRARY</h2>
+              <p style={body({ fontSize:"14px", color:"#888", marginTop:"8px", lineHeight:1.6 })}>Curated extra workouts — dip in whenever you want, no daily requirement.</p>
+            </div>
+            {Object.values(BONUS_POOLS).map(pool=>(
+              <ExtrasPoolCard key={pool.id}
+                pool={pool}
+                checked={bonusChecked[pool.id]||{}}
+                setChecked={c=>setBonusChecked(f=>({...f,[pool.id]:typeof c==="function"?c(f[pool.id]||{}):c}))}
+                open={bonusOpen===pool.id}
+                onToggle={()=>setBonusOpen(o=>o===pool.id?null:pool.id)}
+              />
+            ))}
           </>}
 
           {tab==="stack" && <>
@@ -1560,6 +1842,6 @@ export default function App() {
           ))}
         </div>
       </div>
-    </>
+    </DemoContext.Provider>
   );
 }
