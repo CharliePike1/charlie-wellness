@@ -1,5 +1,9 @@
-import { useState, useEffect, useRef, useMemo, createContext, useContext } from "react";
+import { useState, useEffect, useRef, useMemo, createContext, useContext, useId } from "react";
 import { exPhotos } from "./exercise-images.js";
+import { hasFigure, figureSVG, figureCue } from "./exercise-figures.js";
+
+const hasDemo = name => !!exPhotos(name) || hasFigure(name);
+const useSvgId = () => useId().replace(/[^a-zA-Z0-9]/g, "");
 
 const speakEx = (name, note = "") => {
   if (!window.speechSynthesis) return;
@@ -649,11 +653,22 @@ function DoneBadge({ color }) {
 function DemoFrames({ name, color, animate=true }) {
   const srcs = exPhotos(name);
   const [frame, setFrame] = useState(0);
+  const uid = useSvgId();
+  const svg = useMemo(() => (!srcs && hasFigure(name) ? figureSVG(name, { color, frame: animate ? "anim" : "b", uid }) : null), [name, color, animate, uid]);
   useEffect(() => {
     if (!srcs || !animate) return;
     const id = setInterval(() => setFrame(f => 1 - f), 1100);
     return () => clearInterval(id);
   }, [name, animate]);
+  if (svg) {
+    const cue = figureCue(name);
+    return (
+      <div style={{ position:"relative", width:"100%", aspectRatio:"3 / 2", borderRadius:"12px", overflow:"hidden", background:`radial-gradient(ellipse at 50% 70%, ${color}14, #000 72%)`, border:`1px solid ${color}33`, flexShrink:0 }}>
+        <div style={{ position:"absolute", inset:0 }} dangerouslySetInnerHTML={{ __html: svg }}/>
+        {cue && <span style={{ ...mono({ fontSize:"8px", letterSpacing:"0.12em", fontWeight:700 }), position:"absolute", left:"10px", top:"8px", padding:"3px 8px", borderRadius:"10px", background:"rgba(0,0,0,0.6)", color, border:`1px solid ${color}33` }}>{cue}</span>}
+      </div>
+    );
+  }
   if (!srcs) return null;
   return (
     <div style={{ position:"relative", width:"100%", aspectRatio:"3 / 2", borderRadius:"12px", overflow:"hidden", background:"#000", border:`1px solid ${color}33`, flexShrink:0 }}>
@@ -673,11 +688,15 @@ function DemoFrames({ name, color, animate=true }) {
 function DemoThumb({ name, color, size=40 }) {
   const openDemo = useContext(DemoContext);
   const srcs = exPhotos(name);
-  if (!srcs) return null;
+  const uid = useSvgId();
+  const svg = useMemo(() => (!srcs && hasFigure(name) ? figureSVG(name, { color, frame: "b", crop: true, uid }) : null), [name, color, uid]);
+  if (!srcs && !svg) return null;
   return (
     <button onClick={e=>{e.stopPropagation();openDemo(name,color);}} onPointerDown={e=>e.stopPropagation()} aria-label={`Show ${name} demo`}
-      style={{ width:size, height:size, flexShrink:0, padding:0, borderRadius:"8px", overflow:"hidden", border:`1px solid ${color}44`, background:"#000", cursor:"pointer" }}>
-      <img src={srcs[1]} alt="" loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}/>
+      style={{ width:size, height:size, flexShrink:0, padding:0, borderRadius:"8px", overflow:"hidden", border:`1px solid ${color}44`, background:srcs?"#000":`radial-gradient(ellipse at 50% 60%, ${color}14, #000 75%)`, cursor:"pointer" }}>
+      {srcs
+        ? <img src={srcs[1]} alt="" loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}/>
+        : <div style={{ width:"100%", height:"100%" }} dangerouslySetInnerHTML={{ __html: svg }}/>}
     </button>
   );
 }
@@ -877,7 +896,7 @@ function LiftWorkoutMode({ data, checked, setChecked, onClose, onComplete }) {
               <span style={{ ...mono({ fontSize:"13px", color:C.text }), background:`${data.color}18`, border:`1px solid ${data.color}33`, borderRadius:"8px", padding:"6px 14px", display:"inline-block", marginBottom:"16px" }}>{ex.sets}</span>
               <p style={body({ fontSize:"15px", color:"#888", lineHeight:1.7, fontStyle:"italic" })}>{ex.note}</p>
               <button onClick={()=>speakEx(ex.name,ex.note)} style={{ ...mono({ fontSize:"11px" }), marginTop:"10px", padding:"6px 16px", borderRadius:"8px", border:`1px solid ${data.color}28`, background:"transparent", color:data.color+"66", cursor:"pointer", display:"inline-flex", alignItems:"center", gap:"6px" }}>🔊 <span>HEAR CUES</span></button>
-              {exPhotos(ex.name)
+              {hasDemo(ex.name)
                 ? <div style={{ margin:"16px 0 12px" }}><DemoFrames name={ex.name} color={data.color}/></div>
                 : <MuscleMap activeMuscles={ex.muscles||[]} color={data.color} pulse/>}
              </div>
