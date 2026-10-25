@@ -21,7 +21,7 @@ const C = {
 };
 
 // ── Exercise Pools ────────────────────────────────────────────────────────────
-const AEROBIC_POOL = ["Jumping Jacks","High Knees","Stair Jumps","Side Skaters","Squat Jumps","Mountain Climbers","Jump Rope","Side Jump Lunges","Butt Kicks"];
+const AEROBIC_POOL = ["Jumping Jacks","High Knees","Stair Jumps","Side Skaters","Squat Jumps","Fast Feet","Jump Rope","Side Jump Lunges","Butt Kicks"];
 
 const LOW_IMPACT_POOL = ["Speed Squats","Rapid Reverse Lunges","Low-Impact Skater Steps","Squat to Calf Raise","Speed Lateral Lunges","Kettlebell Swings","Bicycle Crunches","Glute Bridge Marches","Russian Twists"];
 
@@ -912,8 +912,9 @@ function LiftWorkoutMode({ data, checked, setChecked, onClose, onComplete }) {
   );
 }
 
-function SnackCard({ config, exercises, timerState, setTimerState }) {
+function SnackCard({ config, exercises, timerState, setTimerState, options=[], onSwap }) {
   const [activeMode,setActiveMode] = useState(false);
+  const [optOpen,setOptOpen] = useState(null);
   const { timeLeft, running, done } = timerState;
   const urgent = running&&timeLeft<=10;
   const ref = useRef(null);
@@ -942,11 +943,19 @@ function SnackCard({ config, exercises, timerState, setTimerState }) {
       </div>
       <div style={{ marginBottom:"14px", opacity:done?0.35:1, transition:"opacity 0.4s" }}>
         {exercises.map((ex,i)=>(
-          <div key={i} style={{ display:"flex", gap:"10px", alignItems:"center", padding:"6px 0", borderBottom:i<2?`1px solid ${C.dim}`:"none" }}>
-            <span style={mono({ fontSize:"10px", color:C.muted, minWidth:"14px" })}>{i+1}</span>
-            <DemoThumb name={ex} color={config.color} size={32}/>
-            <span style={{ ...body({ fontSize:"15px", color:"#c8c8c8", fontWeight:500 }), flex:1 }}>{ex}</span>
-            <button onClick={()=>speakEx(ex)} style={{ ...mono({ fontSize:"13px" }), width:"26px", height:"26px", borderRadius:"50%", border:`1px solid ${config.color}22`, background:"transparent", color:config.color+"55", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, padding:0, lineHeight:1 }}>🔊</button>
+          <div key={i}>
+            <div style={{ display:"flex", gap:"10px", alignItems:"center", padding:"6px 0", borderBottom:(i<2&&optOpen!==i)?`1px solid ${C.dim}`:"none" }}>
+              <span style={mono({ fontSize:"10px", color:C.muted, minWidth:"14px" })}>{i+1}</span>
+              <DemoThumb name={ex} color={config.color} size={32}/>
+              <span onClick={()=>onSwap&&!done&&setOptOpen(o=>o===i?null:i)} style={{ ...body({ fontSize:"15px", color:"#c8c8c8", fontWeight:500 }), flex:1, cursor:onSwap&&!done?"pointer":undefined }}>{ex}</span>
+              {onSwap&&!done&&<button onClick={()=>setOptOpen(o=>o===i?null:i)} aria-label={`Swap ${ex}`} style={{ ...mono({ fontSize:"13px" }), width:"26px", height:"26px", borderRadius:"50%", border:`1px solid ${config.color}33`, background:optOpen===i?config.color+"22":"transparent", color:config.color+"88", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, padding:0, lineHeight:1 }}>&#x27F3;</button>}
+              <button onClick={()=>speakEx(ex)} style={{ ...mono({ fontSize:"13px" }), width:"26px", height:"26px", borderRadius:"50%", border:`1px solid ${config.color}22`, background:"transparent", color:config.color+"55", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, padding:0, lineHeight:1 }}>🔊</button>
+            </div>
+            {optOpen===i&&(
+              <OptionScroller color={config.color} current={ex}
+                options={[ex, ...options].map(n=>({ name:n, sets:AEROBIC_POOL.includes(n)?"HIGH-IMPACT":"LOW-IMPACT" }))}
+                onPick={name=>{ onSwap(i,name); setOptOpen(null); }}/>
+            )}
           </div>
         ))}
       </div>
@@ -1675,7 +1684,10 @@ export default function App() {
   };
 
   const [impactMode, setImpactMode] = usePersisted("impactMode", "high");
-  const hiitExercises = useMemo(()=>dealHiit(impactMode), [impactMode]);
+  const [hiitSwaps, setHiitSwaps] = usePersisted("hiitSwaps", {});
+  const hiitExercises = useMemo(()=>dealHiit(impactMode).map((g,si)=>g.map((ex,ei)=>hiitSwaps[`${impactMode}-${si}-${ei}`]||ex)), [impactMode, hiitSwaps]);
+  const hiitSpare = [...AEROBIC_POOL, ...LOW_IMPACT_POOL].filter(n=>!hiitExercises.flat().includes(n));
+  const swapHiit = (si, ei, name) => setHiitSwaps(s=>({ ...s, [`${impactMode}-${si}-${ei}`]: name }));
 
   // Lift: base seeded picks + swap overrides
   const baseLiftPicks = useMemo(()=>{
@@ -1792,7 +1804,7 @@ export default function App() {
             </div>
             <ImpactPicker mode={impactMode} onSet={setImpactMode}/>
             {SNACK_CONFIG.map((cfg,i)=>(
-              <SnackCard key={cfg.id} config={cfg} exercises={hiitExercises[i]}
+              <SnackCard key={cfg.id} config={cfg} exercises={hiitExercises[i]} options={hiitSpare} onSwap={(ei,name)=>swapHiit(i,ei,name)}
                 timerState={timerStates[cfg.id]}
                 setTimerState={updater=>setTimerStates(s=>({...s,[cfg.id]:typeof updater==="function"?updater(s[cfg.id]):updater}))}
               />

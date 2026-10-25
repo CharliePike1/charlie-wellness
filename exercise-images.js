@@ -64,7 +64,6 @@ export const EX_PHOTOS = {
   "Lateral Lunge + 3s Hold": "Barbell_Side_Split_Squat",
   "Loaded Carries": "Farmers_Walk",
   "McGill Side Plank": "Side_Bridge",
-  "Mountain Climbers": "Mountain_Climbers",
   "Neck Extension (light)": "Isometric_Neck_Exercise_-_Front_And_Back",
   "Neck Flexion (hand resist)": "Isometric_Neck_Exercise_-_Front_And_Back",
   "Neutral-Grip DB Press": "Dumbbell_Bench_Press_with_Neutral_Grip",

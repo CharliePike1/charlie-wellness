@@ -374,6 +374,11 @@ const FIGS = {
     anchor: "center", dur: 1.6,
     props: [{ k: "label", text: "STEP WIDE · NO JUMP", at: fixed("head", 20, -26), mid: 1 }],
   },
+  fastFeet: {
+    base: { t: -70, h: -82, ua: 70, fa: -12 },
+    a: { th: 18, sn: 96, ft: 10, fth: 42, fsn: 108, fft: 0 }, b: { th: 42, sn: 108, ft: 0, fth: 18, fsn: 96, fft: 10 }, anchor: "center", dur: 0.5,
+    props: [{ k: "label", text: "STAY LOW · QUICK FEET", at: fixed("head", 0, -22), mid: 1 }],
+  },
   buttKicks: {
     a: { th: 96, sn: -116, ft: -70, fth: 90, fsn: 90, fft: 20, ua: 110, fa: 40, fua: 60, ffa: -30 },
     b: { th: 90, sn: 90, ft: 20, fth: 96, fsn: -116, fft: -70, ua: 60, fa: -30, fua: 110, ffa: 40 }, anchor: "center", dur: 0.9,
@@ -419,7 +424,7 @@ const ALIAS = {
   "March in Place (weighted)": "marchWeighted", "Step Touch Cardio": "stepTouch", "Stair Jumps": "stairJump", "Stair Jumps (intervals)": "stairJump",
   "Shadow Boxing": "shadowBox", "Jumping Jacks": "jumpingJack", "High Knees": "highKnees", "Side Skaters": "skater",
   "Low-Impact Skater Steps": "skaterStep", "Butt Kicks": "buttKicks", "Squat to Calf Raise": "squatCalfRaise",
-  "Speed Lateral Lunges": "speedLateralLunge", "Glute Bridge Marches": "bridgeMarch",
+  "Speed Lateral Lunges": "speedLateralLunge", "Fast Feet": "fastFeet", "Glute Bridge Marches": "bridgeMarch",
 };
 
 const built = {};
