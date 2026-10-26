@@ -437,17 +437,6 @@ function MuscleMap({ activeMuscles, color, pulse }) {
   );
 }
 
-function StreakFlame({ streak }) {
-  const intensity = Math.min(streak / 7, 1);
-  const flameColor = streak === 0 ? "#333" : streak < 3 ? "#FF6B35" : streak < 7 ? "#FF3D1F" : "#FFB800";
-  return (
-    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:"2px" }}>
-      <div style={{ fontSize:`${18+intensity*8}px`, lineHeight:1, filter:streak>0?`drop-shadow(0 0 ${8+intensity*16}px ${flameColor})`:"none", transition:"all 0.5s", opacity:streak===0?0.25:1 }}>🔥</div>
-      <span style={{ fontFamily:"'DM Mono',monospace", fontSize:"9px", color:streak===0?"#333":flameColor, letterSpacing:"0.1em", fontWeight:700 }}>{streak}d</span>
-    </div>
-  );
-}
-
 function ArcRing({ pct, color, size=80 }) {
   const r = (size-10)/2, cx = size/2, cy = size/2;
   const circumference = 2*Math.PI*r, arcLen = circumference*0.75;
@@ -650,7 +639,8 @@ function DoneBadge({ color }) {
   );
 }
 
-function DemoFrames({ name, color, animate=true }) {
+function DemoFrames({ name, color, animate=true, bare=false }) {
+  const media = useDemoMedia(name);
   const srcs = exPhotos(name);
   const [frame, setFrame] = useState(0);
   const uid = useSvgId();
@@ -660,68 +650,111 @@ function DemoFrames({ name, color, animate=true }) {
     const id = setInterval(() => setFrame(f => 1 - f), 1100);
     return () => clearInterval(id);
   }, [name, animate]);
+  const box = bare
+    ? { position:"absolute", inset:0, overflow:"hidden" }
+    : { position:"relative", width:"100%", maxWidth:"100%", aspectRatio:"3 / 2", borderRadius:"12px", overflow:"hidden", border:`1px solid ${color}55`, flexShrink:0 };
+  const chip = (text, extra={}) => <span style={{ ...mono({ fontSize:"8px", letterSpacing:"0.12em", fontWeight:700 }), position:"absolute", left:"10px", top:"8px", padding:"3px 8px", borderRadius:"10px", background:"rgba(0,0,0,0.6)", color, border:`1px solid ${color}44`, ...extra }}>{text}</span>;
+  if (media) return <div style={{ ...box, background:"#000" }}><MediaView media={media} label={`${name} demo`}/>{!bare && chip("YOUR CLIP")}</div>;
   if (svg) {
     const cue = figureCue(name);
     return (
-      <div style={{ position:"relative", width:"100%", aspectRatio:"3 / 2", borderRadius:"12px", overflow:"hidden", background:`radial-gradient(ellipse at 50% 70%, ${color}14, #000 72%)`, border:`1px solid ${color}33`, flexShrink:0 }}>
+      <div style={{ ...box, background:`radial-gradient(ellipse at 50% 70%, ${color}26, #000 72%)` }}>
         <div style={{ position:"absolute", inset:0 }} dangerouslySetInnerHTML={{ __html: svg }}/>
-        {cue && <span style={{ ...mono({ fontSize:"8px", letterSpacing:"0.12em", fontWeight:700 }), position:"absolute", left:"10px", top:"8px", padding:"3px 8px", borderRadius:"10px", background:"rgba(0,0,0,0.6)", color, border:`1px solid ${color}33` }}>{cue}</span>}
+        {cue && !bare && chip(cue)}
       </div>
     );
   }
-  if (!srcs) return null;
+  if (!srcs) return bare ? <div style={{ ...box, display:"grid", placeItems:"center", background:`radial-gradient(ellipse at 50% 60%, ${color}22, #000 75%)` }}><span style={cond({ fontSize:"26px", color:color+"99" })}>{name.slice(0,1)}</span></div> : null;
   return (
-    <div style={{ position:"relative", width:"100%", aspectRatio:"3 / 2", borderRadius:"12px", overflow:"hidden", background:"#000", border:`1px solid ${color}33`, flexShrink:0 }}>
+    <div style={{ ...box, background:"#000" }}>
       {srcs.map((s,i)=>(
         <img key={s} src={s} alt={`${name} ${i?"end":"start"} position`} loading="lazy"
-          style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", opacity:frame===i?1:0, transition:"opacity 0.45s ease" }}/>
+          style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", opacity:(animate?frame===i:i===1)?1:0, transition:"opacity 0.45s ease" }}/>
       ))}
-      <div style={{ position:"absolute", left:"10px", bottom:"8px", display:"flex", gap:"6px" }}>
+      {animate && !bare && <div style={{ position:"absolute", left:"10px", bottom:"8px", display:"flex", gap:"6px" }}>
         {["START","END"].map((l,i)=>(
           <span key={l} style={{ ...mono({ fontSize:"8px", letterSpacing:"0.12em", fontWeight:700 }), padding:"3px 8px", borderRadius:"10px", background:frame===i?color:"rgba(0,0,0,0.6)", color:frame===i?"#000":"#aaa", transition:"all 0.3s" }}>{l}</span>
         ))}
-      </div>
+      </div>}
     </div>
   );
 }
 
-function DemoThumb({ name, color, size=40 }) {
+function DemoThumb({ name, color, size=40, fallback=false }) {
   const openDemo = useContext(DemoContext);
+  const media = useDemoMedia(name);
   const srcs = exPhotos(name);
   const uid = useSvgId();
   const svg = useMemo(() => (!srcs && hasFigure(name) ? figureSVG(name, { color, frame: "b", crop: true, uid }) : null), [name, color, uid]);
-  if (!srcs && !svg) return null;
+  const frameStyle = { width:size, height:size, flexShrink:0, padding:0, borderRadius:size>44?"12px":"8px", overflow:"hidden", border:`1px solid ${color}66`, position:"relative",
+    background:srcs||media?"#000":`radial-gradient(ellipse at 50% 60%, ${color}26, #000 75%)`, boxShadow:`0 0 14px -6px ${color}` };
+  if (!srcs && !svg && !media) return fallback
+    ? <div style={{ ...frameStyle, display:"grid", placeItems:"center" }} aria-hidden="true"><span style={cond({ fontSize:"22px", color:color+"99" })}>{name.slice(0,1)}</span></div>
+    : null;
   return (
-    <button onClick={e=>{e.stopPropagation();openDemo(name,color);}} onPointerDown={e=>e.stopPropagation()} aria-label={`Show ${name} demo`}
-      style={{ width:size, height:size, flexShrink:0, padding:0, borderRadius:"8px", overflow:"hidden", border:`1px solid ${color}44`, background:srcs?"#000":`radial-gradient(ellipse at 50% 60%, ${color}14, #000 75%)`, cursor:"pointer" }}>
-      {srcs
-        ? <img src={srcs[1]} alt="" loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}/>
+    <button onClick={e=>{e.stopPropagation();openDemo(name,color);}} onPointerDown={e=>e.stopPropagation()} aria-label={`Show ${name} demo`} style={{ ...frameStyle, cursor:"pointer" }}>
+      {media ? <MediaView media={media} label=""/>
+        : srcs ? <img src={srcs[1]} alt="" loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}/>
         : <div style={{ width:"100%", height:"100%" }} dangerouslySetInnerHTML={{ __html: svg }}/>}
     </button>
   );
 }
 
 function DemoViewer({ name, color, onClose }) {
-  const ex = EX_INDEX[name] || { name };
+  const app = useContext(AppCtx);
+  const ex = app.findEx(name) || { name };
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [lbs, setLbs] = useState("");
+  const [clipErr, setClipErr] = useState("");
+  const clipRef = useRef(null);
   useEffect(() => {
     const onKey = e => { if (e.key==="Escape") onClose(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+  const inToday = app.inToday(name), pr = app.prWeights[name], own = !!app.overrides[name];
+  const pickClip = async e => {
+    const f = e.target.files?.[0]; e.target.value = "";
+    if (!f) return;
+    if (f.size > 80*1024*1024) { setClipErr("That clip is too big to store. Trim it to a few seconds."); return; }
+    try { setClipErr(""); await app.setOwnClip(name, f); } catch { setClipErr("Couldn't save that clip on this phone. Try a shorter one."); }
+  };
+  const savePR = e => { e.preventDefault(); const v = parseFloat(lbs); if (v > 0) { app.setPR(name, Math.round(v*10)/10); setLbs(""); } };
+  const fact = t => <span key={t} style={{ ...mono({ fontSize:"10px", letterSpacing:"0.08em" }), padding:"6px 9px", borderRadius:"20px", border:`1px solid ${color}44`, color, background:color+"12" }}>{t}</span>;
   return (
     <div onClick={onClose} style={{ position:"fixed", inset:0, zIndex:10000, background:"rgba(0,0,0,0.88)", backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)", display:"flex", alignItems:"center", justifyContent:"center", padding:"calc(env(safe-area-inset-top) + 20px) 16px calc(env(safe-area-inset-bottom) + 20px)", animation:"fadeIn 0.2s ease" }}>
-      <div onClick={e=>e.stopPropagation()} style={{ width:"100%", maxWidth:"440px", maxHeight:"100%", overflowY:"auto", background:C.card, border:`1px solid ${color}33`, borderRadius:"18px", padding:"18px", boxShadow:`0 20px 60px #000, 0 0 40px ${color}22` }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:"12px", marginBottom:"12px" }}>
-          <div>
-            <p style={mono({ fontSize:"9px", letterSpacing:"0.2em", color, marginBottom:"4px" })}>HOW TO</p>
-            <h2 style={cond({ fontSize:"24px", color:C.text, lineHeight:1.1 })}>{ex.name}</h2>
-            {ex.sets && <p style={mono({ fontSize:"11px", color:C.soft, marginTop:"4px" })}>{ex.sets}</p>}
+      <div onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true" aria-label={ex.name} style={{ width:"100%", maxWidth:"440px", maxHeight:"100%", overflowY:"auto", background:UI.surface, backgroundImage:`linear-gradient(170deg, ${color}1f, transparent 40%)`, border:`1px solid ${color}55`, borderRadius:"20px", padding:"18px", boxShadow:`0 20px 60px #000, 0 0 40px ${color}2e`, display:"flex", flexDirection:"column", gap:"12px" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:"12px" }}>
+          <div style={{ minWidth:0 }}>
+            <p style={mono({ fontSize:"9px", letterSpacing:"0.2em", color, marginBottom:"4px", textTransform:"uppercase" })}>{ex.source || "How to"}</p>
+            <h2 style={cond({ fontSize:"26px", color:UI.ink, lineHeight:1.05 })}>{ex.name}</h2>
           </div>
-          <button onClick={onClose} aria-label="Close" style={{ ...mono({ fontSize:"14px" }), width:"34px", height:"34px", borderRadius:"50%", border:`1px solid ${C.muted}`, background:"transparent", color:C.soft, cursor:"pointer", flexShrink:0 }}>✕</button>
+          <IconBtn onClick={onClose} label="Close"><XIcon/></IconBtn>
         </div>
         <DemoFrames name={name} color={color}/>
-        {ex.note && <p style={body({ fontSize:"14px", color:"#999", lineHeight:1.6, marginTop:"14px" })}>{ex.note}</p>}
-        <button onClick={()=>speakEx(ex.name, ex.note)} style={{ ...smallBtn(color,true), marginTop:"14px", width:"100%", padding:"12px" }}>🔊 HEAR CUES</button>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:"6px" }}>{[ex.sets, ...(ex.body||[]), ex.equip].filter(Boolean).map(fact)}{pr ? fact(`BEST ${pr} LB`) : null}</div>
+        {ex.note && <p style={body({ fontSize:"14.5px", color:UI.ink2, lineHeight:1.6 })}>{ex.note}</p>}
+        {inToday
+          ? <div style={{ ...btnStyle("line"), cursor:"default", color }}>✓ IN TODAY'S WORKOUT</div>
+          : <button onClick={()=>app.addToToday(name)} style={btnStyle("solid", color)}>+ ADD TO TODAY</button>}
+        <button onClick={()=>speakEx(ex.name, ex.note)} style={btnStyle("line")}>🔊 HEAR CUES</button>
+        <form onSubmit={savePR} style={{ display:"grid", gridTemplateColumns:"1fr auto", gap:"8px" }}>
+          <label htmlFor="pr-input" style={{ position:"absolute", width:1, height:1, overflow:"hidden", clip:"rect(0 0 0 0)" }}>Best weight in pounds</label>
+          <input id="pr-input" inputMode="decimal" value={lbs} onChange={e=>setLbs(e.target.value.replace(/[^0-9.]/g,""))} placeholder={pr ? `Best: ${pr} lb · new best?` : "Log your best weight (lb)"} style={{ ...searchStyle, padding:"12px" }}/>
+          <button type="submit" disabled={!(parseFloat(lbs)>0)} style={{ ...btnStyle("line"), width:"auto", padding:"12px 16px", opacity:parseFloat(lbs)>0?1:0.5 }}>SAVE</button>
+        </form>
+        <input ref={clipRef} type="file" accept="image/*,video/*" onChange={pickClip} hidden/>
+        {own
+          ? <button onClick={()=>app.clearOwnClip(name)} style={btnStyle("ghost", UI.ink2)}>REMOVE MY CLIP</button>
+          : !ex.custom && <button onClick={()=>clipRef.current?.click()} style={btnStyle("ghost", color)}>USE MY OWN CLIP AS THE DEMO</button>}
+        {ex.custom && !ex.media && <button onClick={()=>clipRef.current?.click()} style={btnStyle("ghost", color)}>ADD A PHOTO OR CLIP</button>}
+        {clipErr && <p role="alert" style={body({ fontSize:"13px", color:C.red })}>{clipErr}</p>}
+        {ex.custom && (confirmDel
+          ? <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"8px" }}>
+              <button onClick={()=>setConfirmDel(false)} style={btnStyle("line")}>KEEP IT</button>
+              <button onClick={()=>app.deleteCustom(name)} style={{ ...btnStyle("solid", C.red), color:"#fff" }}>DELETE</button>
+            </div>
+          : <button onClick={()=>setConfirmDel(true)} style={{ ...btnStyle("ghost", C.red) }}>DELETE THIS EXERCISE</button>)}
       </div>
     </div>
   );
@@ -834,6 +867,7 @@ function LiftWorkoutMode({ data, checked, setChecked, onClose, onComplete }) {
   const [supersetMode,setSupersetMode] = useState(false);
   const restTimer = useTimer(60);
   const ex = data.exercises[idx];
+  const guidedMedia = useDemoMedia(ex.name);
   const supersetPartnerIdx = idx+1 < data.exercises.length ? idx+1 : null;
   const nextEx = supersetPartnerIdx !== null ? data.exercises[supersetPartnerIdx] : null;
   const doneCount = data.exercises.filter((_,i)=>checked[i]).length;
@@ -896,7 +930,7 @@ function LiftWorkoutMode({ data, checked, setChecked, onClose, onComplete }) {
               <span style={{ ...mono({ fontSize:"13px", color:C.text }), background:`${data.color}18`, border:`1px solid ${data.color}33`, borderRadius:"8px", padding:"6px 14px", display:"inline-block", marginBottom:"16px" }}>{ex.sets}</span>
               <p style={body({ fontSize:"15px", color:"#888", lineHeight:1.7, fontStyle:"italic" })}>{ex.note}</p>
               <button onClick={()=>speakEx(ex.name,ex.note)} style={{ ...mono({ fontSize:"11px" }), marginTop:"10px", padding:"6px 16px", borderRadius:"8px", border:`1px solid ${data.color}28`, background:"transparent", color:data.color+"66", cursor:"pointer", display:"inline-flex", alignItems:"center", gap:"6px" }}>🔊 <span>HEAR CUES</span></button>
-              {hasDemo(ex.name)
+              {(guidedMedia || hasDemo(ex.name))
                 ? <div style={{ margin:"16px 0 12px" }}><DemoFrames name={ex.name} color={data.color}/></div>
                 : <MuscleMap activeMuscles={ex.muscles||[]} color={data.color} pulse/>}
              </div>
@@ -1008,180 +1042,6 @@ function OptionScroller({ options, current, color, onPick }) {
   );
 }
 
-function LiftingSection({ data, checked, setChecked, onSwap, onChoose, onComplete }) {
-  const [workoutMode,setWorkoutMode] = useState(false);
-  const [collapsed,setCollapsed] = useState(false);
-  const [optOpen,setOptOpen] = useState(null);
-  const done = data.exercises.filter((_,i)=>checked[i]).length;
-  const allDone = done===data.exercises.length;
-  const activeMuscles = [...new Set(data.exercises.flatMap(e=>e.muscles||[]))];
-  const cueCat = data.categories[getDaySeed("cue") % data.categories.length];
-  if(workoutMode) return <LiftWorkoutMode data={data} checked={checked} setChecked={setChecked} onClose={()=>setWorkoutMode(false)} onComplete={onComplete}/>;
-  return (
-    <div style={cardBase(data.color,allDone)}>
-      {allDone&&<DoneBadge color={data.color}/>}
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", cursor:"pointer" }} onClick={()=>setCollapsed(c=>!c)}>
-        <div>
-          <p style={mono({ fontSize:"10px", letterSpacing:"0.2em", color:data.color, textTransform:"uppercase", marginBottom:"4px" })}>TODAY'S LIFT</p>
-          <h2 style={cond({ fontSize:"24px", color:allDone?data.color+"77":data.color, textShadow:`0 0 20px ${data.color}${allDone?"18":"44"}`, transition:"all 0.4s" })}>{data.label}</h2>
-        </div>
-        <div style={{ display:"flex", alignItems:"center", gap:"10px", marginTop:"4px" }}>
-          <ArcRing pct={Math.round((done/data.exercises.length)*100)} color={data.color} size={52}/>
-          <span style={mono({ fontSize:"14px", color:collapsed?data.color:C.muted, transition:"color 0.2s" })}>{collapsed?"▼":"▲"}</span>
-        </div>
-      </div>
-      {!collapsed&&<>
-        <p style={mono({ fontSize:"11px", color:"#777", margin:"10px 0 14px" })}>5 of {data.pool.length} · randomized · tap any exercise to swap it · {done}/{data.exercises.length} done</p>
-        <MuscleMap activeMuscles={activeMuscles} color={data.color}/>
-        <p style={mono({ fontSize:"9px", color:"#444", letterSpacing:"0.1em", textAlign:"center", marginBottom:"14px" })}>MUSCLES TODAY</p>
-        <ScienceCue category={cueCat} color={data.color}/>
-        {data.exercises.map((ex,i)=>(
-          <div key={i}>
-            <SwipeRow label={ex.name} sublabel={`${ex.sets} · ${ex.note}`} checked={!!checked[i]} onToggle={()=>setChecked(c=>({...c,[i]:!c[i]}))} onSwap={(onChoose||onSwap)&&(()=>setOptOpen(o=>o===i?null:i))} onAudio={()=>speakEx(ex.name,ex.note)} color={data.color} isLast={i===data.exercises.length-1&&optOpen!==i}/>
-            {optOpen===i&&onChoose&&(
-              <OptionScroller options={data.pool.filter(e=>e.cat===ex.cat)} current={ex.name} color={data.color}
-                onPick={name=>{onChoose(i,name);setOptOpen(null);}}/>
-            )}
-          </div>
-        ))}
-        <button onClick={()=>setWorkoutMode(true)} style={{ ...smallBtn(data.color,false), width:"100%", marginTop:"16px", padding:"12px" }}>▶ GUIDED WORKOUT MODE</button>
-      </>}
-    </div>
-  );
-}
-
-// ── Flex Pool Accordion Section ───────────────────────────────────────────────
-function FlexPoolCard({ pool, checked, setChecked, exercises, open, onToggle, onSwap }) {
-  const done = exercises.filter((_,i)=>checked[i]).length;
-  const allDone = done===exercises.length;
-  return (
-    <div style={{ ...cardBase(pool.color,allDone), marginBottom:"8px", padding:"0" }}>
-      {/* Accordion header */}
-      <div onClick={onToggle} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"16px 18px", cursor:"pointer" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:"10px" }}>
-          <span style={{ fontSize:"16px", opacity:0.7 }}>{pool.icon}</span>
-          <div>
-            <p style={mono({ fontSize:"9px", letterSpacing:"0.15em", color:pool.color, marginBottom:"2px" })}>{pool.label}</p>
-            {open && <p style={mono({ fontSize:"10px", color:"#555" })}>{done}/{exercises.length} done</p>}
-          </div>
-        </div>
-        <div style={{ display:"flex", alignItems:"center", gap:"10px" }}>
-          {allDone&&<div style={{ width:"6px", height:"6px", borderRadius:"50%", background:pool.color, boxShadow:`0 0 6px ${pool.color}` }}/>}
-          <span style={mono({ fontSize:"12px", color:open?pool.color:C.muted, transition:"color 0.2s" })}>{open?"▲":"▼"}</span>
-        </div>
-      </div>
-      {/* Accordion body */}
-      {open&&(
-        <div style={{ padding:"0 18px 18px", borderTop:`1px solid ${C.dim}` }}>
-          <p style={mono({ fontSize:"10px", color:"#555", letterSpacing:"0.1em", margin:"12px 0 10px" })}>5 OF {pool.exercises.length} · RANDOMIZED TODAY</p>
-          {exercises.map((ex,i)=>(
-            <SwipeRow key={i} label={ex.name} sublabel={`${ex.sets} · ${ex.note}`} checked={!!checked[i]} onToggle={()=>setChecked(c=>({...c,[i]:!c[i]}))} onSwap={onSwap&&(()=>onSwap(i))} color={pool.color} isLast={i===exercises.length-1}/>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function YogaCard({ open, onToggle }) {
-  return (
-    <div style={{ ...cardBase(C.purple,false), marginBottom:"8px", padding:"0" }}>
-      <div onClick={onToggle} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"16px 18px", cursor:"pointer" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:"10px" }}>
-          <span style={{ fontSize:"16px", opacity:0.7 }}>☽</span>
-          <div>
-            <p style={mono({ fontSize:"9px", letterSpacing:"0.15em", color:C.purple, marginBottom:"2px" })}>YOGA</p>
-          </div>
-        </div>
-        <span style={mono({ fontSize:"12px", color:open?C.purple:C.muted })}>{open?"▲":"▼"}</span>
-      </div>
-      {open&&(
-        <div style={{ padding:"0 18px 18px", borderTop:`1px solid ${C.dim}` }}>
-          <p style={body({ fontSize:"14px", color:"#666", fontStyle:"italic", lineHeight:1.7, marginTop:"14px" })}>Yoga content coming soon — poses, flows, and guided sessions will live here.</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function RestCard({ open, onToggle }) {
-  return (
-    <div style={{ ...cardBase(C.muted,false), marginBottom:"8px", padding:"0" }}>
-      <div onClick={onToggle} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"16px 18px", cursor:"pointer" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:"10px" }}>
-          <span style={{ fontSize:"16px", opacity:0.5 }}>◌</span>
-          <p style={mono({ fontSize:"9px", letterSpacing:"0.15em", color:"#555" })}>REST / RECOVERY</p>
-        </div>
-        <span style={mono({ fontSize:"12px", color:open?"#555":C.muted })}>{open?"▲":"▼"}</span>
-      </div>
-      {open&&(
-        <div style={{ padding:"0 18px 18px", borderTop:`1px solid ${C.dim}` }}>
-          <p style={body({ fontSize:"14px", color:"#555", fontStyle:"italic", lineHeight:1.7, marginTop:"14px" })}>Full rest. No structured movement. Prioritize sleep, nutrition, and recovery. Let the body do its work.</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Wed: Yoga + Core & Stability
-function WedFlexDay({ flexChecked, setFlexChecked, flexExercises, onFlexSwap }) {
-  const [openSection, setOpenSection] = useState(null);
-  const toggle = id => setOpenSection(o => o===id ? null : id);
-  return (
-    <>
-      <p style={mono({ fontSize:"10px", letterSpacing:"0.2em", color:"#555", textTransform:"uppercase", marginBottom:"12px" })}>WEDNESDAY · YOGA + CORE</p>
-      <YogaCard open={openSection==="yoga"} onToggle={()=>toggle("yoga")}/>
-      <FlexPoolCard
-        pool={FLEX_POOLS.core} checked={flexChecked.core||{}} setChecked={c=>setFlexChecked(f=>({...f,core:typeof c==="function"?c(f.core||{}):c}))}
-        exercises={flexExercises.core} open={openSection==="core"} onToggle={()=>toggle("core")}
-        onSwap={onFlexSwap&&(i=>onFlexSwap("core",i))}
-      />
-    </>
-  );
-}
-
-// Sat/Sun: Choose Your Day
-const WEEKEND_OPTIONS = ["rest","yoga","core","mobility","functional","mindbody","cardio"];
-function WeekendFlexDay({ flexChecked, setFlexChecked, flexExercises, onFlexSwap }) {
-  const [openSection, setOpenSection] = useState(null);
-  const toggle = id => setOpenSection(o => o===id ? null : id);
-  return (
-    <>
-      <p style={mono({ fontSize:"10px", letterSpacing:"0.2em", color:"#555", textTransform:"uppercase", marginBottom:"12px" })}>CHOOSE YOUR DAY</p>
-      <RestCard open={openSection==="rest"} onToggle={()=>toggle("rest")}/>
-      <YogaCard open={openSection==="yoga"} onToggle={()=>toggle("yoga")}/>
-      {Object.values(FLEX_POOLS).map(pool=>(
-        <FlexPoolCard key={pool.id}
-          pool={pool} checked={flexChecked[pool.id]||{}} setChecked={c=>setFlexChecked(f=>({...f,[pool.id]:typeof c==="function"?c(f[pool.id]||{}):c}))}
-          exercises={flexExercises[pool.id]} open={openSection===pool.id} onToggle={()=>toggle(pool.id)}
-          onSwap={onFlexSwap&&(i=>onFlexSwap(pool.id,i))}
-        />
-      ))}
-    </>
-  );
-}
-
-function RehabSection({ checked, setChecked, open, setOpen }) {
-  const done = REHAB.filter((_,i)=>checked[i]).length;
-  const allDone = done===REHAB.length;
-  return (
-    <div style={cardBase(C.purple,allDone)}>
-      {allDone&&<DoneBadge color={C.purple}/>}
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-        <div>
-          <p style={mono({ fontSize:"10px", letterSpacing:"0.2em", color:C.purple, textTransform:"uppercase", marginBottom:"4px" })}>DAILY PROTOCOL</p>
-          <h2 style={cond({ fontSize:"22px", color:allDone?C.purple+"77":C.purple, marginBottom:"4px", textShadow:`0 0 20px ${C.purple}${allDone?"18":"44"}`, transition:"all 0.4s" })}>SHOULDER REHAB</h2>
-          <p style={mono({ fontSize:"11px", color:"#777" })}>AC joint · before lifting · {done}/{REHAB.length} done</p>
-        </div>
-        <button onClick={()=>setOpen(o=>!o)} style={{ ...mono({ fontSize:"10px", letterSpacing:"0.1em" }), background:"transparent", border:`1px solid ${C.purple}33`, color:C.purple+"88", borderRadius:"7px", padding:"7px 14px", cursor:"pointer" }}>{open?"HIDE":"SHOW"}</button>
-      </div>
-      {open&&<div style={{ marginTop:"16px" }}>
-        {REHAB.map((ex,i)=><SwipeRow key={i} label={ex.name} sublabel={`${ex.sets} · ${ex.note}`} checked={!!checked[i]} onToggle={()=>setChecked(c=>({...c,[i]:!c[i]}))} onAudio={()=>speakEx(ex.name,ex.note)} color={C.purple} isLast={i===REHAB.length-1}/>)}
-      </div>}
-    </div>
-  );
-}
-
 function SupplementsSection({ checked, setChecked }) {
   const done = SUPPLEMENTS.filter((_,i)=>checked[i]).length;
   const allDone = done===SUPPLEMENTS.length;
@@ -1216,10 +1076,6 @@ function DailyLog({ checked, setChecked }) {
       {DAILY_ITEMS.map((item,i)=><SwipeRow key={i} label={item.label} sublabel={item.sublabel} checked={!!checked[i]} onToggle={()=>setChecked(c=>({...c,[i]:!c[i]}))} color={item.color} isLast={i===DAILY_ITEMS.length-1}/>)}
     </div>
   );
-}
-
-function Pill({ label, active, onClick }) {
-  return <button onClick={onClick} style={{ ...mono({ fontSize:"10px", letterSpacing:"0.12em", fontWeight:700 }), padding:"6px 14px", borderRadius:"20px", border:`1px solid ${active?C.yellow:C.muted}`, background:active?C.yellow:"transparent", color:active?"#000":C.soft, cursor:"pointer", transition:"all 0.2s", whiteSpace:"nowrap" }}>{label}</button>;
 }
 
 // ── WeeklyMomentum — 12-week bar replaces streak flame ───────────────────────
@@ -1380,7 +1236,7 @@ function PRProofBoard({ prWeights }) {
     <div style={{ ...cardBase(C.yellow, false), marginBottom:"14px" }}>
       <p style={mono({ fontSize:"10px", letterSpacing:"0.2em", color:C.yellow, textTransform:"uppercase", marginBottom:"4px" })}>PROOF BOARD</p>
       <h2 style={cond({ fontSize:"22px", color:"#444", marginBottom:"8px" })}>PERSONAL RECORDS</h2>
-      <p style={body({ fontSize:"13px", color:"#555", fontStyle:"italic" })}>No PRs logged yet — coming soon when set-logging lands.</p>
+      <p style={body({ fontSize:"13px", color:"#555", fontStyle:"italic" })}>No best weights yet. Open any exercise and log your best weight; it shows up here.</p>
     </div>
   );
   return (
@@ -1394,86 +1250,6 @@ function PRProofBoard({ prWeights }) {
             <p style={cond({ fontSize:"28px", color:C.yellow, lineHeight:1 })}>{weight}<span style={mono({ fontSize:"10px", color:"#666", marginLeft:"3px" })}>lbs</span></p>
           </div>
         ))}
-      </div>
-    </div>
-  );
-}
-
-// ── Urgency badge + ExtrasPoolCard ────────────────────────────────────────────
-const URGENCY_COLORS = { CRITICAL:C.red, HIGH:C.orange, MEDIUM:C.teal, BONUS:C.purple };
-function UrgencyBadge({ level }) {
-  const c = URGENCY_COLORS[level]||C.muted;
-  return (
-    <div style={{ display:"inline-flex", alignItems:"center", gap:"5px", background:`${c}18`, border:`1px solid ${c}33`, borderRadius:"20px", padding:"3px 10px" }}>
-      <div style={{ width:"4px", height:"4px", borderRadius:"50%", background:c, boxShadow:`0 0 5px ${c}` }}/>
-      <span style={mono({ fontSize:"9px", color:c, letterSpacing:"0.1em" })}>{level}</span>
-    </div>
-  );
-}
-
-function ExtrasPoolCard({ pool, checked, setChecked, open, onToggle }) {
-  const done = pool.exercises.filter((_,i)=>checked[i]).length;
-  const allDone = done===pool.exercises.length;
-  return (
-    <div style={{ ...cardBase(pool.color, allDone), marginBottom:"8px", padding:0 }}>
-      <div onClick={onToggle} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"16px 18px", cursor:"pointer" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:"10px" }}>
-          <span style={{ fontSize:"16px", opacity:0.7 }}>{pool.icon}</span>
-          <div>
-            <p style={mono({ fontSize:"9px", letterSpacing:"0.15em", color:pool.color, marginBottom:"4px" })}>{pool.label}</p>
-            <div style={{ display:"flex", gap:"6px", alignItems:"center", flexWrap:"wrap" }}>
-              <UrgencyBadge level={pool.urgency}/>
-              {pool.shoulderSafe&&<span style={mono({ fontSize:"8px", color:C.teal })}>🛡 SHOULDER SAFE</span>}
-            </div>
-          </div>
-        </div>
-        <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
-          {open&&<span style={mono({ fontSize:"10px", color:C.soft })}>{done}/{pool.exercises.length}</span>}
-          {allDone&&<div style={{ width:"6px", height:"6px", borderRadius:"50%", background:pool.color, boxShadow:`0 0 6px ${pool.color}` }}/>}
-          <span style={mono({ fontSize:"12px", color:open?pool.color:C.muted })}>{open?"▲":"▼"}</span>
-        </div>
-      </div>
-      {open&&(
-        <div style={{ padding:"0 18px 18px", borderTop:`1px solid ${C.dim}` }}>
-          <p style={body({ fontSize:"13px", color:"#666", fontStyle:"italic", lineHeight:1.6, marginTop:"12px", marginBottom:"12px" })}>{pool.note}</p>
-          {pool.exercises.map((ex,i)=>(
-            <SwipeRow key={i} label={ex.name} sublabel={`${ex.sets} · ${ex.note}`}
-              checked={!!checked[i]} onToggle={()=>setChecked(c=>({...c,[i]:!c[i]}))}
-              onAudio={()=>speakEx(ex.name,ex.note)}
-              color={pool.color} isLast={i===pool.exercises.length-1}/>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── WorkoutPicker — override the scheduled day, train what you want ──────────
-function WorkoutPicker({ override, onSet, scheduledLabel }) {
-  const opts = [
-    { id:null,   label:"AUTO",        c:C.soft   },
-    { id:"A",    label:"ARMS/CHEST",  c:C.yellow },
-    { id:"B",    label:"LEGS/BACK",   c:C.teal   },
-    { id:"flex", label:"FLEX",        c:C.orange },
-  ];
-  return (
-    <div style={{ marginBottom:"14px" }}>
-      <div style={{ display:"flex", alignItems:"center", gap:"8px", marginBottom:"8px" }}>
-        <p style={mono({ fontSize:"9px", letterSpacing:"0.2em", color:"#555" })}>TODAY'S SESSION</p>
-        {override!==null&&<span style={mono({ fontSize:"8px", color:C.orange, letterSpacing:"0.1em" })}>OVERRIDE · scheduled: {scheduledLabel}</span>}
-      </div>
-      <div style={{ display:"flex", gap:"6px", overflowX:"auto", WebkitOverflowScrolling:"touch" }}>
-        {opts.map(o=>{
-          const active = override===o.id;
-          return (
-            <button key={String(o.id)} onClick={()=>onSet(o.id)}
-              style={{ ...mono({ fontSize:"10px", letterSpacing:"0.1em", fontWeight:700 }), flexShrink:0, padding:"8px 14px", borderRadius:"8px",
-                border:`1.5px solid ${active?o.c:C.muted}`, background:active?o.c+"1a":"transparent", color:active?o.c:"#777",
-                cursor:"pointer", transition:"all 0.2s", boxShadow:active?`0 0 10px ${o.c}33`:"none" }}>
-              {o.label}
-            </button>
-          );
-        })}
       </div>
     </div>
   );
@@ -1506,12 +1282,11 @@ function ImpactPicker({ mode, onSet }) {
 }
 
 const TABS = [
-  { id:"today",  label:"TODAY"  },
-  { id:"hiit",   label:"HIIT"   },
-  { id:"lift",   label:"LIFT"   },
-  { id:"rehab",  label:"REHAB"  },
-  { id:"extras", label:"EXTRAS" },
-  { id:"stack",  label:"STACK"  },
+  { id:"today",    label:"TODAY"    },
+  { id:"hiit",     label:"HIIT"     },
+  { id:"library",  label:"LIBRARY"  },
+  { id:"progress", label:"PROGRESS" },
+  { id:"habits",   label:"HABITS"   },
 ];
 
 // ── Daily Wisdom — seeded by date, same quote all day ────────────────────────
@@ -1611,25 +1386,500 @@ function usePR() {
   return [pr, setPR];
 }
 
-// ── Streak — consecutive days with ≥5/7 daily log items checked ──────────────
-const calcStreak = () => {
-  let streak = 0;
-  const base = new Date();
-  for (let i = 0; i <= 365; i++) {
-    const d = new Date(base);
-    d.setDate(base.getDate() - i);
-    const key = `cw-${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}-daily`;
-    try {
-      const raw = localStorage.getItem(key);
-      if (raw === null) break;
-      const data = JSON.parse(raw);
-      const checked = Object.values(data).filter(Boolean).length;
-      if (checked >= 5) streak++;
-      else break;
-    } catch { break; }
-  }
-  return streak;
+// ── Redesign: one library, swap anything, add-ons, your own exercises ────────
+const UI = { surface:"#101214", surface2:"#171a1d", line:"#1f2327", ink:"#eceeea", ink2:"#a3a8a6", ink3:"#61676a" };
+const BODY_COLOR = { Chest:"#FF8C42", Back:"#3D8EFF", Shoulders:"#B06EFF", Arms:"#D4F53C", Legs:"#00E5CC", Glutes:"#FF5FA2", Core:"#FFC23D", Neck:"#FF3D1F", Grip:"#E8C547", Mobility:"#5BC8FF", Cardio:"#FF3D1F", Rehab:"#4CAF50", "Full body":"#D4F53C" };
+const BODY_PARTS = ["All", ...Object.keys(BODY_COLOR)];
+const SLOT_COLOR = { chest_press:"#FF8C42", chest_iso:"#FF5FA2", bicep:"#D4F53C", tricep:"#B06EFF", shoulder:"#5BC8FF", hinge:"#FF5FA2", squat:"#00E5CC", hamstring_iso:"#FF8C42", back_pull:"#3D8EFF", core_acc:"#FFC23D" };
+const CAT_LABEL = { chest_press:"Chest press", chest_iso:"Chest fly", bicep:"Biceps", tricep:"Triceps", shoulder:"Shoulders", hinge:"Hinge", squat:"Squat", hamstring_iso:"Hamstrings", back_pull:"Back pull", core_acc:"Core" };
+const exColor = e => BODY_COLOR[e?.body?.[0]] || C.yellow;
+
+const MUSCLE_BODY = { chest:"Chest", shoulders:"Shoulders", biceps:"Arms", triceps:"Arms", forearms:"Grip", back:"Back", lats:"Back", traps:"Back", quads:"Legs", hamstrings:"Legs", calves:"Legs", adductors:"Legs", glutes:"Glutes", core:"Core", abs:"Core", obliques:"Core" };
+const POOL_BODY = { serratus:["Shoulders"], neck:["Neck"], tibialis:["Legs"], adductors:["Legs"], glutemed:["Glutes"], obliques:["Core"], forearms:["Grip"], wrists:["Grip"], shaolin:["Core"], fullbody:["Full body"], overall:["Mobility","Cardio"], back:["Back","Core"], legs:["Legs","Glutes"], core:["Core"], mobility:["Mobility"], functional:["Legs","Core"], mindbody:["Mobility"], cardio:["Cardio"] };
+const equipOf = n => /band/i.test(n) ? "Band" : /\bDB\b|Dumbbell|Farmer|Suitcase|Goblet/i.test(n) ? "Dumbbells" : /Kettlebell/i.test(n) ? "Kettlebell" : /Bench Press|Pull Ups|Bar Hang|Dead Hang|Hyperextension/i.test(n) ? "Gym" : "Bodyweight";
+
+const LIBRARY = (() => {
+  const m = new Map();
+  const add = (e, parts, source, extra) => {
+    const prev = m.get(e.name);
+    if (prev) { prev.body = [...new Set([...prev.body, ...parts])]; return; }
+    m.set(e.name, { ...e, body:[...new Set(parts)], source, ...extra });
+  };
+  for (const [split, pool] of [["A", LIFTING_A], ["B", LIFTING_B]])
+    for (const e of pool.exercises) add(e, (e.muscles||[]).map(x=>MUSCLE_BODY[x]||"Full body"), split==="A"?"Arms / Chest lift":"Legs / Back lift", { equip:/band/i.test(e.name)?"Band":"Dumbbells", split });
+  for (const e of REHAB) add(e, ["Rehab","Shoulders"], "Shoulder rehab", { equip:equipOf(e.name) });
+  for (const [prefix, group] of [["Extras", EXTRAS_POOLS], ["Bonus", BONUS_POOLS], ["Flex", FLEX_POOLS]])
+    for (const p of Object.values(group)) for (const e of (p.exercises||[])) add(e, POOL_BODY[p.id]||["Full body"], `${prefix} · ${p.label}`, { equip:equipOf(e.name) });
+  return [...m.values()];
+})();
+const LIB_INDEX = Object.fromEntries(LIBRARY.map(e=>[e.name, e]));
+
+const COLLECTIONS = [
+  { id:"lift-A", label:"ARMS / CHEST LIFTS", color:C.yellow, names:LIFTING_A.exercises.map(e=>e.name) },
+  { id:"lift-B", label:"LEGS / BACK LIFTS", color:C.teal, names:LIFTING_B.exercises.map(e=>e.name) },
+  { id:"rehab", label:"SHOULDER REHAB", color:C.purple, names:REHAB.map(e=>e.name) },
+  ...[EXTRAS_POOLS, BONUS_POOLS, FLEX_POOLS].flatMap(g=>Object.values(g).filter(p=>p.exercises).map(p=>({ id:"p-"+p.id, label:p.label, color:p.color, names:p.exercises.map(e=>e.name) }))),
+];
+
+const SUGGEST_POOLS = { A:["serratus","neck","forearms","wrists"], B:["tibialis","adductors","glutemed","obliques"], flex:["obliques","glutemed","serratus","tibialis"] };
+const suggestionsFor = key => SUGGEST_POOLS[key].map(id => seededShuffle(EXTRAS_POOLS[id].exercises, getDaySeed("sugg-"+id))[0].name);
+
+// Your own exercises + demo clips: list in localStorage, media files in IndexedDB
+const CUSTOM_KEY = "cw-custom-exercises", OVERRIDE_KEY = "cw-demo-overrides";
+const readJSON = (k, fb) => { try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : fb; } catch { return fb; } };
+const writeJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+function useStoredJSON(key, fb) {
+  const [v, setV] = useState(() => readJSON(key, fb));
+  const set = u => setV(p => { const n = typeof u === "function" ? u(p) : u; writeJSON(key, n); return n; });
+  return [v, set];
+}
+const mediaDB = (() => {
+  let p = null;
+  const open = () => (p ||= new Promise((res, rej) => { const r = indexedDB.open("cw-media", 1); r.onupgradeneeded = () => r.result.createObjectStore("files"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }));
+  const run = (mode, fn) => open().then(db => new Promise((res, rej) => { const tx = db.transaction("files", mode); const req = fn(tx.objectStore("files")); tx.oncomplete = () => res(req.result); tx.onerror = () => rej(tx.error); }));
+  return { put:(k, v) => run("readwrite", s => s.put(v, k)), get:k => run("readonly", s => s.get(k)), del:k => run("readwrite", s => s.delete(k)) };
+})();
+const mediaUrls = new Map();
+function useMediaUrl(id) {
+  const [url, setUrl] = useState(() => (id && mediaUrls.get(id)) || null);
+  useEffect(() => {
+    if (!id) { setUrl(null); return; }
+    if (mediaUrls.has(id)) { setUrl(mediaUrls.get(id)); return; }
+    let live = true;
+    mediaDB.get(id).then(blob => { if (!blob || !live) return; const u = URL.createObjectURL(blob); mediaUrls.set(id, u); setUrl(u); }).catch(() => {});
+    return () => { live = false; };
+  }, [id]);
+  return url;
+}
+const AppCtx = createContext({ findEx:n => LIB_INDEX[n] || EX_INDEX[n], overrides:{}, prWeights:{}, inToday:() => false });
+function useDemoMedia(name) {
+  const app = useContext(AppCtx);
+  const m = app.overrides[name] || app.findEx(name)?.media || null;
+  const url = useMediaUrl(m?.id);
+  return m && url ? { url, kind:m.kind } : null;
+}
+function MediaView({ media, label }) {
+  const st = { position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", display:"block" };
+  return media.kind === "video"
+    ? <video src={media.url} muted autoPlay loop playsInline aria-label={label} style={st}/>
+    : <img src={media.url} alt={label} style={st}/>;
+}
+
+function Tag({ color, children }) {
+  return <span style={mono({ fontSize:"9.5px", letterSpacing:"0.13em", color, textTransform:"uppercase", lineHeight:1.2 })}>{children}</span>;
+}
+function CheckBtn({ on, color, onToggle, label }) {
+  return (
+    <button onClick={e=>{ e.stopPropagation(); onToggle(); }} aria-pressed={on} aria-label={`Mark ${label} done`}
+      style={{ width:"36px", height:"36px", flexShrink:0, borderRadius:"50%", border:`1.5px solid ${on?color:color+"66"}`, background:on?color:"transparent", color:on?"#07080a":"transparent", display:"grid", placeItems:"center", cursor:"pointer", padding:0, boxShadow:on?`0 0 14px ${color}99`:"none", transition:"all .2s ease" }}>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="m3 8.5 3.2 3L13 4.5"/></svg>
+    </button>
+  );
+}
+function IconBtn({ onClick, label, children }) {
+  return <button onClick={e=>{ e.stopPropagation(); onClick(); }} aria-label={label} style={{ width:"36px", height:"36px", flexShrink:0, borderRadius:"50%", border:`1px solid ${UI.line}`, background:"transparent", color:UI.ink3, display:"grid", placeItems:"center", cursor:"pointer", padding:0 }}>{children}</button>;
+}
+const XIcon = () => <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="m4 4 8 8M12 4l-8 8"/></svg>;
+
+function ExCard({ ex, color, tag, hint, done, onTap, right }) {
+  return (
+    <div role={onTap?"button":undefined} tabIndex={onTap?0:undefined} onClick={onTap}
+      onKeyDown={e=>{ if (onTap && (e.key==="Enter"||e.key===" ")) { e.preventDefault(); onTap(); } }}
+      style={{ display:"grid", gridTemplateColumns:"58px minmax(0,1fr) auto", gap:"12px", alignItems:"center", padding:"10px", borderRadius:"16px", cursor:onTap?"pointer":"default", opacity:done?0.55:1,
+        backgroundColor:UI.surface, backgroundImage:`linear-gradient(115deg, ${color}2b 0%, transparent 62%)`, border:`1px solid ${color}55`, boxShadow:`0 0 22px -12px ${color}`, transition:"opacity .25s ease" }}>
+      <DemoThumb name={ex.name} color={color} size={58} fallback/>
+      <div style={{ minWidth:0, display:"flex", flexDirection:"column", gap:"3px" }}>
+        {(tag||hint) && <div style={{ display:"flex", gap:"8px", alignItems:"center", flexWrap:"wrap" }}>{tag}{hint}</div>}
+        <p style={body({ fontSize:"16px", fontWeight:600, color:UI.ink, lineHeight:1.2, textDecoration:done?"line-through":"none" })}>{ex.name}</p>
+        {(ex.sets||ex.note) && <p style={body({ fontSize:"12.5px", color:UI.ink2, lineHeight:1.35, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" })}>{[ex.sets, ex.note].filter(Boolean).join(" · ")}</p>}
+      </div>
+      <div style={{ display:"flex", gap:"6px", alignItems:"center" }}>{right}</div>
+    </div>
+  );
+}
+function SectionHead({ title, aside }) {
+  return (
+    <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:"12px", margin:"24px 0 10px" }}>
+      <h2 style={cond({ fontSize:"22px", color:UI.ink, letterSpacing:"0.02em" })}>{title}</h2>
+      {aside && <span style={mono({ fontSize:"10px", letterSpacing:"0.14em", color:UI.ink3, textTransform:"uppercase" })}>{aside}</span>}
+    </div>
+  );
+}
+const btnStyle = (kind, color) => ({ display:"flex", alignItems:"center", justifyContent:"center", gap:"8px", width:"100%", padding:"14px", borderRadius:"14px", cursor:"pointer", ...mono({ fontSize:"12px", letterSpacing:"0.12em", fontWeight:600, textTransform:"uppercase" }),
+  ...(kind==="solid" ? { background:color, color:"#07080a", border:"none", boxShadow:`0 6px 24px -8px ${color}` }
+    : kind==="ghost" ? { background:"transparent", color, border:`1.5px dashed ${color}88` }
+    : { background:UI.surface2, color:UI.ink, border:`1px solid ${UI.line}` }) });
+
+function SessionPicker({ override, onSet }) {
+  const opts = [[null,"AUTO",UI.ink2],["A","ARMS/CHEST",C.yellow],["B","LEGS/BACK",C.teal],["flex","FLEX",C.orange]];
+  return (
+    <div role="group" aria-label="Today's session" style={{ display:"flex", gap:"4px", marginTop:"14px", background:UI.surface, border:`1px solid ${UI.line}`, borderRadius:"12px", padding:"4px" }}>
+      {opts.map(([k,l,c])=>{
+        const on = override===k;
+        return <button key={l} onClick={()=>onSet(k)} aria-pressed={on} style={{ flex:1, minWidth:0, padding:"9px 2px", borderRadius:"9px", border:"none", cursor:"pointer", whiteSpace:"nowrap", ...mono({ fontSize:"10px", letterSpacing:"0.08em", fontWeight:on?700:500 }), background:on?c+"22":"transparent", color:on?c:UI.ink3, boxShadow:on?`inset 0 0 0 1px ${c}66`:"none" }}>{l}</button>;
+      })}
+    </div>
+  );
+}
+
+function TodayHeader({ title, accent, pct, eyebrow, override, scheduledLabel, onSetOverride, theme, onTheme }) {
+  const L = 2*Math.PI*31;
+  return (
+    <header style={{ paddingTop:"calc(env(safe-area-inset-top) + 16px)" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+        <p style={mono({ fontSize:"10px", letterSpacing:"0.16em", color:UI.ink3, textTransform:"uppercase" })}>{eyebrow}</p>
+        <button onClick={onTheme} aria-label="Toggle background" style={{ background:"transparent", border:"none", cursor:"pointer", fontSize:"15px", opacity:0.5, color:UI.ink, padding:"4px" }}>{theme==="midnight"?"☀":"☽"}</button>
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr) auto", gap:"12px", alignItems:"center", marginTop:"6px" }}>
+        <h1 style={cond({ fontSize:"clamp(34px, 11.5vw, 52px)", lineHeight:0.92, color:accent, textShadow:`0 0 34px ${accent}88`, letterSpacing:"0.005em", whiteSpace:"nowrap" })}>
+          {title[0]}{title[1] && <><span style={{ color:UI.ink3, fontWeight:600, padding:"0 3px" }}>/</span>{title[1]}</>}
+        </h1>
+        <div style={{ position:"relative", width:"74px", height:"74px" }} aria-label={`${pct}% done today`}>
+          <svg viewBox="0 0 74 74" style={{ width:"100%", height:"100%", transform:"rotate(-90deg)" }}>
+            <circle cx="37" cy="37" r="31" fill="none" stroke={UI.line} strokeWidth="6"/>
+            <circle cx="37" cy="37" r="31" fill="none" stroke={accent} strokeWidth="6" strokeLinecap="round" strokeDasharray={L} strokeDashoffset={L*(1-pct/100)} style={{ transition:"stroke-dashoffset .5s ease", filter:`drop-shadow(0 0 6px ${accent}aa)` }}/>
+          </svg>
+          <span style={{ position:"absolute", inset:0, display:"grid", placeItems:"center", ...cond({ fontSize:"22px", color:UI.ink }) }}>{pct}%</span>
+        </div>
+      </div>
+      <SessionPicker override={override} onSet={onSetOverride}/>
+      {override!==null && <p style={mono({ fontSize:"9px", color:UI.ink3, letterSpacing:"0.12em", marginTop:"8px" })}>SCHEDULED TODAY: {scheduledLabel} · TAP AUTO TO SWITCH BACK</p>}
+    </header>
+  );
+}
+
+function SuggestRail({ names, onAdd }) {
+  const app = useContext(AppCtx);
+  const items = names.filter(n=>!app.inToday(n)).map(n=>app.findEx(n)).filter(Boolean);
+  if (!items.length) return <p style={body({ fontSize:"14px", color:UI.ink2, padding:"14px", background:UI.surface, border:`1px solid ${UI.line}`, borderRadius:"16px" })}>All of today's suggestions are added. Use Add any exercise for more.</p>;
+  return (
+    <div style={{ display:"flex", gap:"8px", overflowX:"auto", scrollSnapType:"x mandatory", paddingBottom:"4px", WebkitOverflowScrolling:"touch" }}>
+      {items.map(e=>{
+        const c = exColor(e);
+        return (
+          <button key={e.name} onClick={()=>onAdd(e.name)} style={{ flex:"0 0 148px", scrollSnapAlign:"start", textAlign:"left", cursor:"pointer", display:"flex", flexDirection:"column", gap:"8px", padding:"10px", borderRadius:"16px",
+            backgroundColor:UI.surface, backgroundImage:`linear-gradient(180deg, ${c}2e, transparent 70%)`, border:`1px solid ${c}66`, color:UI.ink }}>
+            <div style={{ width:"100%", height:"84px", borderRadius:"12px", overflow:"hidden", position:"relative" }}><DemoFrames name={e.name} color={c} animate={false} bare/></div>
+            <span style={body({ fontSize:"13.5px", fontWeight:600, lineHeight:1.2, minHeight:"2.4em" })}>{e.name}</span>
+            <Tag color={UI.ink3}>{e.source.replace(/^\w+ · /,"")}</Tag>
+            <Tag color={c}>+ Add to today</Tag>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function Fold({ title, eyebrow, color, count, open, onToggle, children }) {
+  return (
+    <div style={{ borderRadius:"16px", backgroundColor:UI.surface, backgroundImage:`linear-gradient(115deg, ${color}1f, transparent 60%)`, border:`1px solid ${color}44`, marginBottom:"8px" }}>
+      <button onClick={onToggle} aria-expanded={open} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", padding:"14px", gap:"12px", background:"transparent", border:"none", color:UI.ink, cursor:"pointer", textAlign:"left" }}>
+        <div><Tag color={color}>{eyebrow}</Tag><p style={body({ fontSize:"16px", fontWeight:600, marginTop:"4px" })}>{title}</p></div>
+        <span style={{ display:"flex", gap:"10px", alignItems:"center" }}>
+          {count && <span style={mono({ fontSize:"11px", color:UI.ink3 })}>{count}</span>}
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke={UI.ink3} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform:open?"rotate(180deg)":"none", transition:"transform .2s ease" }}><path d="m4 6 4 4 4-4"/></svg>
+        </span>
+      </button>
+      {open && <div style={{ display:"flex", flexDirection:"column", gap:"6px", padding:"0 8px 8px" }}>{children}</div>}
+    </div>
+  );
+}
+
+function Sheet({ color=C.yellow, onClose, children }) {
+  useEffect(() => {
+    const onKey = e => { if (e.key==="Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow; document.body.style.overflow = "hidden";
+    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
+  }, []);
+  return (
+    <div style={{ position:"fixed", inset:0, zIndex:9000 }}>
+      <div onClick={onClose} style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.62)", backdropFilter:"blur(3px)", WebkitBackdropFilter:"blur(3px)", animation:"fadeIn .2s ease" }}/>
+      <div role="dialog" aria-modal="true" style={{ position:"absolute", left:0, right:0, bottom:0, maxWidth:"480px", margin:"0 auto", maxHeight:"88%", display:"flex", flexDirection:"column", background:UI.surface, border:`1px solid ${color}44`, borderBottom:"none", borderRadius:"24px 24px 0 0", padding:"10px 16px calc(env(safe-area-inset-bottom) + 16px)", animation:"sheetRise .28s cubic-bezier(.2,.9,.25,1)", boxShadow:`0 -12px 40px ${color}22` }}>
+        <div style={{ width:"40px", height:"4px", borderRadius:"4px", background:UI.line, margin:"0 auto 12px", flexShrink:0 }}/>
+        {children}
+      </div>
+    </div>
+  );
+}
+function SheetHead({ eyebrow, title, sub, color, onClose }) {
+  return (
+    <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:"12px", flexShrink:0 }}>
+      <div style={{ minWidth:0 }}>
+        <Tag color={color}>{eyebrow}</Tag>
+        <h2 style={cond({ fontSize:"28px", color:UI.ink, lineHeight:1, marginTop:"4px" })}>{title}</h2>
+        {sub && <p style={body({ fontSize:"13px", color:UI.ink2, marginTop:"4px" })}>{sub}</p>}
+      </div>
+      <IconBtn onClick={onClose} label="Close"><XIcon/></IconBtn>
+    </div>
+  );
+}
+
+const filterLibrary = (list, q, part) => {
+  const s = q.trim().toLowerCase();
+  return list.filter(e => (part==="All" || e.body.includes(part)) && (!s || e.name.toLowerCase().includes(s) || (e.note||"").toLowerCase().includes(s)));
 };
+function PartChips({ value, onChange }) {
+  return (
+    <div role="group" aria-label="Body part" style={{ display:"flex", gap:"6px", overflowX:"auto", padding:"12px 0", WebkitOverflowScrolling:"touch", flexShrink:0 }}>
+      {BODY_PARTS.map(p=>{
+        const c = BODY_COLOR[p] || UI.ink2, on = p===value;
+        return <button key={p} onClick={()=>onChange(p)} aria-pressed={on} style={{ flex:"0 0 auto", padding:"8px 12px", borderRadius:"20px", cursor:"pointer", ...mono({ fontSize:"11px", letterSpacing:"0.08em" }), border:`1px solid ${on?c:c+"55"}`, background:on?c:UI.surface, color:on?"#07080a":c, boxShadow:on?`0 0 14px ${c}88`:"none" }}>{p}</button>;
+      })}
+    </div>
+  );
+}
+const searchStyle = { width:"100%", padding:"13px 14px", borderRadius:"14px", border:`1px solid ${UI.line}`, background:UI.surface2, color:UI.ink, fontSize:"16px", fontFamily:"'Barlow',sans-serif", outline:"none" };
+const bodyTag = e => <Tag color={exColor(e)}>{e.custom ? "Your exercise · " : ""}{e.body.slice(0,2).join(" · ")} · {e.equip}</Tag>;
+
+function PickerSheet({ eyebrow, title, sub, color, primary, library, inUse, onPick, onClose }) {
+  const [scope, setScope] = useState(primary ? "primary" : "all");
+  const [q, setQ] = useState("");
+  const [part, setPart] = useState("All");
+  const byName = useMemo(()=>Object.fromEntries(library.map(e=>[e.name,e])), [library]);
+  const list = scope==="primary" ? primary.names.map(n=>byName[n]).filter(Boolean) : filterLibrary(library, q, part);
+  return (
+    <Sheet color={color} onClose={onClose}>
+      <SheetHead eyebrow={eyebrow} title={title} sub={sub} color={color} onClose={onClose}/>
+      {primary && (
+        <div role="group" aria-label="Show" style={{ display:"flex", gap:"4px", marginTop:"12px", background:UI.surface2, border:`1px solid ${UI.line}`, borderRadius:"12px", padding:"4px", flexShrink:0 }}>
+          {[["primary", `${primary.label} (${primary.names.length})`],["all", `ALL EXERCISES (${library.length})`]].map(([k,l])=>(
+            <button key={k} onClick={()=>setScope(k)} aria-pressed={scope===k} style={{ flex:1, minWidth:0, padding:"9px 4px", borderRadius:"9px", border:"none", cursor:"pointer", ...mono({ fontSize:"10px", letterSpacing:"0.08em" }), whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", background:scope===k?color+"22":"transparent", color:scope===k?color:UI.ink3 }}>{l.toUpperCase()}</button>
+          ))}
+        </div>
+      )}
+      {scope==="all" && <>
+        <input id="picker-search" type="search" value={q} onChange={e=>setQ(e.target.value)} placeholder="Search exercises" autoComplete="off" style={{ ...searchStyle, marginTop:"12px", flexShrink:0 }}/>
+        <PartChips value={part} onChange={setPart}/>
+      </>}
+      <div style={{ overflowY:"auto", minHeight:0, display:"flex", flexDirection:"column", gap:"8px", marginTop:scope==="all"?0:"12px", WebkitOverflowScrolling:"touch" }}>
+        {list.length ? list.map(e=>(
+          <ExCard key={e.name} ex={e} color={exColor(e)} onTap={()=>onPick(e.name)} tag={bodyTag(e)}
+            right={inUse.has(e.name) ? <span style={{ ...mono({ fontSize:"9px", letterSpacing:"0.12em" }), color, border:`1px solid ${color}66`, borderRadius:"20px", padding:"4px 7px" }}>IN USE</span> : null}/>
+        )) : <p style={body({ fontSize:"14px", color:UI.ink2, padding:"14px" })}>Nothing matches that. Try another body part, or add it from the Library as a new exercise.</p>}
+      </div>
+    </Sheet>
+  );
+}
+
+function LibraryView({ library, onNew }) {
+  const openDemo = useContext(DemoContext);
+  const [q, setQ] = useState("");
+  const [part, setPart] = useState("All");
+  const [coll, setColl] = useState(null);
+  const active = COLLECTIONS.find(c=>c.id===coll);
+  const pool = active ? library.filter(e=>active.names.includes(e.name)) : library;
+  const list = filterLibrary(pool, q, part).sort((a,b)=>(b.custom?1:0)-(a.custom?1:0) || a.name.localeCompare(b.name));
+  return (
+    <>
+      <header style={{ paddingTop:"calc(env(safe-area-inset-top) + 18px)", paddingBottom:"6px" }}>
+        <Tag color={UI.ink3}>Everything in one place</Tag>
+        <h1 style={cond({ fontSize:"44px", color:C.yellow, textShadow:`0 0 30px ${C.yellow}66`, marginTop:"4px" })}>Library</h1>
+        <p style={body({ fontSize:"14px", color:UI.ink2, marginTop:"6px", lineHeight:1.5 })}>Every lift, extra, bonus workout, rehab and flex move. Tap one to see the demo or add it to today.</p>
+      </header>
+      <input id="library-search" type="search" value={q} onChange={e=>setQ(e.target.value)} placeholder={`Search ${library.length} exercises`} autoComplete="off" style={{ ...searchStyle, marginTop:"10px" }}/>
+      <PartChips value={part} onChange={setPart}/>
+      <SectionHead title="Collections" aside={active ? "tap again to clear" : `${COLLECTIONS.length} sets`}/>
+      <div style={{ display:"flex", gap:"8px", overflowX:"auto", paddingBottom:"4px", WebkitOverflowScrolling:"touch" }}>
+        {COLLECTIONS.map(c=>{
+          const on = c.id===coll;
+          return (
+            <button key={c.id} onClick={()=>setColl(on?null:c.id)} aria-pressed={on} style={{ flex:"0 0 auto", maxWidth:"170px", textAlign:"left", cursor:"pointer", padding:"12px", borderRadius:"14px",
+              backgroundColor:on?c.color+"26":UI.surface, backgroundImage:`linear-gradient(160deg, ${c.color}24, transparent 70%)`, border:`1px solid ${on?c.color:c.color+"55"}`, boxShadow:on?`0 0 18px -6px ${c.color}`:"none", color:UI.ink }}>
+              <span style={mono({ fontSize:"9.5px", letterSpacing:"0.12em", color:c.color, display:"block", lineHeight:1.35 })}>{c.label}</span>
+              <span style={mono({ fontSize:"10px", color:UI.ink3, display:"block", marginTop:"6px" })}>{c.names.length} moves</span>
+            </button>
+          );
+        })}
+      </div>
+      <div style={{ display:"flex", justifyContent:"space-between", margin:"18px 0 10px" }}>
+        <Tag color={UI.ink3}>{list.length} exercise{list.length===1?"":"s"}</Tag>
+        <Tag color={active?active.color:UI.ink3}>{active ? active.label : part==="All" ? "A to Z" : part}</Tag>
+      </div>
+      <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
+        {list.length ? list.map(e=><ExCard key={e.name} ex={e} color={exColor(e)} onTap={()=>openDemo(e.name, exColor(e))} tag={bodyTag(e)}/>)
+          : <p style={body({ fontSize:"14px", color:UI.ink2, padding:"14px" })}>Nothing matches that. Try another body part, or add it as a new exercise.</p>}
+      </div>
+      <button onClick={onNew} style={{ position:"fixed", right:"max(16px, calc(50% - 224px))", bottom:"calc(env(safe-area-inset-bottom) + 84px)", zIndex:50, display:"flex", alignItems:"center", gap:"8px", padding:"14px 18px", borderRadius:"30px", border:"none", cursor:"pointer", background:C.yellow, color:"#07080a", ...mono({ fontSize:"12px", letterSpacing:"0.1em", fontWeight:700 }), boxShadow:`0 10px 30px rgba(0,0,0,.6), 0 0 24px ${C.yellow}55` }}>+ NEW EXERCISE</button>
+    </>
+  );
+}
+
+function NewExerciseSheet({ existing, onSave, onClose }) {
+  const [form, setForm] = useState({ name:"", part:"Core", equip:"Bodyweight", sets:"", note:"" });
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [err, setErr] = useState("");
+  const [saving, setSaving] = useState(false);
+  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview.url); }, [preview]);
+  const set = k => e => setForm(f=>({ ...f, [k]:e.target.value }));
+  const pickFile = e => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (f.size > 80*1024*1024) { setErr("That clip is too big to store. Trim it to a few seconds and try again."); return; }
+    setErr(""); setFile(f); setPreview({ url:URL.createObjectURL(f), kind:f.type.startsWith("video")?"video":"image" });
+  };
+  const submit = async e => {
+    e.preventDefault();
+    const name = form.name.trim();
+    if (!name) { setErr("Give the exercise a name so you can find it later."); return; }
+    if (existing(name)) { setErr("You already have an exercise with that name."); return; }
+    setSaving(true);
+    try { await onSave({ name, body:[form.part], equip:form.equip, sets:form.sets.trim(), note:form.note.trim() }, file); }
+    catch { setErr("Couldn't save the clip on this phone. Try a shorter one, or save without it."); setSaving(false); }
+  };
+  const field = { width:"100%", padding:"12px", borderRadius:"12px", border:`1px solid ${UI.line}`, background:UI.surface2, color:UI.ink, fontSize:"16px", fontFamily:"'Barlow',sans-serif" };
+  const lab = mono({ fontSize:"10px", letterSpacing:"0.14em", color:UI.ink3, textTransform:"uppercase", display:"flex", flexDirection:"column", gap:"6px" });
+  return (
+    <Sheet color={C.yellow} onClose={onClose}>
+      <SheetHead eyebrow="Library" title="New exercise" sub="Saved on this phone and available everywhere right away." color={C.yellow} onClose={onClose}/>
+      <form onSubmit={submit} noValidate style={{ overflowY:"auto", minHeight:0, display:"flex", flexDirection:"column", gap:"12px", marginTop:"12px", WebkitOverflowScrolling:"touch" }}>
+        <label htmlFor="nx-name" style={lab}>Name<input id="nx-name" value={form.name} onChange={set("name")} placeholder="e.g. Landmine Press" autoComplete="off" style={field}/></label>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px" }}>
+          <label htmlFor="nx-part" style={lab}>Body part<select id="nx-part" value={form.part} onChange={set("part")} style={field}>{BODY_PARTS.slice(1).map(p=><option key={p}>{p}</option>)}</select></label>
+          <label htmlFor="nx-equip" style={lab}>Equipment<select id="nx-equip" value={form.equip} onChange={set("equip")} style={field}>{["Bodyweight","Band","Dumbbells","Kettlebell","Gym"].map(p=><option key={p}>{p}</option>)}</select></label>
+        </div>
+        <label htmlFor="nx-sets" style={lab}>Sets &amp; reps<input id="nx-sets" value={form.sets} onChange={set("sets")} placeholder="3×12" autoComplete="off" style={field}/></label>
+        <label htmlFor="nx-note" style={lab}>Form cues<textarea id="nx-note" value={form.note} onChange={set("note")} placeholder="What to focus on. Read out loud when you tap Hear cues." style={{ ...field, minHeight:"76px", resize:"vertical" }}/></label>
+        <label htmlFor="nx-media" style={lab}>Photo or clip (optional)
+          <div style={{ border:`1.5px dashed ${UI.line}`, borderRadius:"14px", padding:"14px", display:"grid", gap:"10px", textAlign:"center", ...body({ fontSize:"13px", color:UI.ink2, textTransform:"none", letterSpacing:0 }) }}>
+            {preview ? <div style={{ position:"relative", width:"100%", aspectRatio:"3 / 2", borderRadius:"12px", overflow:"hidden", background:"#000" }}><MediaView media={preview} label="Your clip"/></div>
+              : <span>Film 5 seconds of the move, or pick one from your camera roll. It loops like a GIF.</span>}
+            <input id="nx-media" type="file" accept="image/*,video/*" onChange={pickFile} style={{ color:UI.ink2, fontSize:"13px" }}/>
+          </div>
+        </label>
+        {err && <p role="alert" style={body({ fontSize:"13px", color:C.red })}>{err}</p>}
+        <button type="submit" disabled={saving} style={btnStyle("solid", C.yellow)}>{saving ? "SAVING..." : "SAVE TO LIBRARY"}</button>
+      </form>
+    </Sheet>
+  );
+}
+
+const dayKeyOf = d => `cw-${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+function weekDays() {
+  const now = new Date(), dow = now.getDay(), mon = new Date(now);
+  mon.setDate(now.getDate() + (dow===0 ? -6 : 1-dow));
+  return Array.from({ length:7 }, (_,i)=>{ const d = new Date(mon); d.setDate(mon.getDate()+i); return d; }).filter(d=>d<=now);
+}
+function MomentumChart() {
+  const weeks = useMemo(() => {
+    const out = [], now = new Date();
+    for (let w = 11; w >= 0; w--) {
+      const mon = new Date(now), dow = mon.getDay();
+      mon.setDate(mon.getDate() + (dow===0 ? -6 : 1-dow) - w*7);
+      let sessions = 0;
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(mon); d.setDate(mon.getDate()+i);
+        if (d > now) continue;
+        const lift = readJSON(`${dayKeyOf(d)}-lift`, {}), addons = readJSON(`${dayKeyOf(d)}-addonChecked`, {}), daily = readJSON(`${dayKeyOf(d)}-daily`, {});
+        const lifted = Object.values(lift).some(s => s && Object.values(s).some(Boolean)) || Object.values(addons).some(Boolean);
+        const busy = Object.values(daily).filter(Boolean).length >= 4;
+        if (lifted || busy) sessions++;
+      }
+      out.push({ sessions, now:w===0 });
+    }
+    return out;
+  }, []);
+  return (
+    <div style={{ padding:"14px", borderRadius:"16px", backgroundColor:UI.surface, backgroundImage:`linear-gradient(160deg, ${C.teal}1f, transparent 65%)`, border:`1px solid ${C.teal}44` }}>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(12, 1fr)", gap:"5px", alignItems:"end", height:"96px" }}>
+        {weeks.map((w,i)=>(
+          <div key={i} title={`${w.sessions} active days`} style={{ height:`${Math.max(6, w.sessions/7*100)}%`, borderRadius:"4px 4px 2px 2px", background:w.now?`linear-gradient(to top, ${C.teal}, ${C.yellow})`:`linear-gradient(to top, ${C.teal}66, ${C.yellow}55)`, boxShadow:w.now?`0 0 14px ${C.teal}99`:"none" }}/>
+        ))}
+      </div>
+      <div style={{ display:"flex", justifyContent:"space-between", marginTop:"8px" }}><Tag color={UI.ink3}>12 weeks ago</Tag><Tag color={UI.ink3}>This week</Tag></div>
+    </div>
+  );
+}
+function WeekStats() {
+  const s = useMemo(() => {
+    let lifts = 0, addons = 0; const rpe = [];
+    for (const d of weekDays()) {
+      const k = dayKeyOf(d);
+      if (Object.values(readJSON(`${k}-lift`, {})).some(x => x && Object.values(x).some(Boolean))) lifts++;
+      addons += Object.values(readJSON(`${k}-addonChecked`, {})).filter(Boolean).length;
+      const r = readJSON(`cw-rpe-${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`, null);
+      if (r) rpe.push(r);
+    }
+    const avg = rpe.length ? rpe.reduce((a,b)=>a+b,0)/rpe.length : 0;
+    return { lifts, addons, effort: !avg ? "—" : avg <= 2.5 ? "EASY" : avg <= 4 ? "HARD" : "MAX" };
+  }, []);
+  const tile = (v, l, c) => (
+    <div style={{ padding:"12px", borderRadius:"16px", backgroundColor:UI.surface, backgroundImage:`linear-gradient(160deg, ${c}24, transparent 70%)`, border:`1px solid ${c}44` }}>
+      <p style={cond({ fontSize:"30px", color:c, textShadow:`0 0 16px ${c}66` })}>{v}</p>
+      <p style={mono({ fontSize:"9.5px", letterSpacing:"0.1em", color:UI.ink3, textTransform:"uppercase", marginTop:"4px", lineHeight:1.3 })}>{l}</p>
+    </div>
+  );
+  return <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:"8px" }}>{tile(s.lifts, "lift days this week", C.teal)}{tile(s.addons, "add-ons done", C.yellow)}{tile(s.effort, "avg effort", C.orange)}</div>;
+}
+
+const blobToDataURL = b => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(b); });
+function BackupCard({ custom, overrides, prWeights, onRestore, toast }) {
+  const fileRef = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const exportBackup = async () => {
+    setBusy(true);
+    try {
+      const ids = [...custom.map(e=>e.media?.id), ...Object.values(overrides).map(m=>m.id)].filter(Boolean);
+      const media = {};
+      for (const id of ids) { const b = await mediaDB.get(id); if (b) media[id] = await blobToDataURL(b); }
+      const data = JSON.stringify({ app:"charlies-wellness", version:1, saved:new Date().toISOString(), custom, overrides, prWeights, media });
+      const fname = `wellness-backup-${new Date().toISOString().slice(0,10)}.json`;
+      const file = new File([data], fname, { type:"application/json" });
+      if (navigator.canShare && navigator.canShare({ files:[file] })) { await navigator.share({ files:[file], title:"Wellness backup" }); toast("Backup ready to save"); }
+      else { const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = fname; a.click(); toast("Backup downloaded"); }
+    } catch (e) { if (e?.name !== "AbortError") toast("Backup didn't finish. Try again."); }
+    setBusy(false);
+  };
+  const importBackup = async e => {
+    const f = e.target.files?.[0]; e.target.value = "";
+    if (!f) return;
+    try {
+      const d = JSON.parse(await f.text());
+      if (d.app !== "charlies-wellness") throw new Error("wrong file");
+      for (const [id, url] of Object.entries(d.media||{})) await mediaDB.put(id, await (await fetch(url)).blob());
+      onRestore(d); toast("Backup restored");
+    } catch { toast("That file isn't a wellness backup"); }
+  };
+  return (
+    <div style={{ padding:"14px", borderRadius:"16px", background:UI.surface, border:`1px solid ${UI.line}`, display:"flex", flexDirection:"column", gap:"10px" }}>
+      <p style={body({ fontSize:"14px", color:UI.ink2, lineHeight:1.5 })}>Your own exercises, clips and best weights live on this phone. Save a backup now and then so clearing Safari data can't erase them.</p>
+      <button onClick={exportBackup} disabled={busy} style={btnStyle("line")}>{busy ? "PREPARING..." : "SAVE A BACKUP"}</button>
+      <button onClick={()=>fileRef.current?.click()} style={btnStyle("ghost", UI.ink2)}>RESTORE FROM BACKUP</button>
+      <input ref={fileRef} type="file" accept="application/json,.json" onChange={importBackup} hidden/>
+    </div>
+  );
+}
+
+function TabBar({ tab, onTab }) {
+  const I = {
+    today:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>,
+    hiit:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5M10 2.5h4"/></svg>,
+    library:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="4" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6"/></svg>,
+    progress:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M4 19.5h16M7 16v-5M12 16V6.5M17 16v-3"/></svg>,
+    habits:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20s-7-4.3-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.7-7 10-7 10Z"/></svg>,
+  };
+  return (
+    <nav aria-label="Sections" style={{ position:"fixed", left:0, right:0, bottom:0, zIndex:60, background:"rgba(7,8,10,0.9)", backdropFilter:"blur(18px)", WebkitBackdropFilter:"blur(18px)", borderTop:`1px solid ${UI.line}`, padding:"8px 8px calc(env(safe-area-inset-bottom) + 8px)" }}>
+      <div style={{ maxWidth:"480px", margin:"0 auto", display:"grid", gridTemplateColumns:"repeat(5, 1fr)" }}>
+        {TABS.map(t=>{
+          const on = tab===t.id;
+          return (
+            <button key={t.id} onClick={()=>onTab(t.id)} aria-current={on?"page":undefined} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:"5px", padding:"6px 0", background:"transparent", border:"none", cursor:"pointer", color:on?C.yellow:UI.ink3, filter:on?`drop-shadow(0 0 6px ${C.yellow}88)`:"none" }}>
+              <span style={{ width:"21px", height:"21px", display:"block" }}>{I[t.id]}</span>
+              <span style={mono({ fontSize:"9.5px", letterSpacing:"0.1em" })}>{t.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
+function Toast({ msg }) {
+  if (!msg) return null;
+  return <div role="status" style={{ position:"fixed", left:"50%", bottom:"calc(env(safe-area-inset-bottom) + 92px)", transform:"translateX(-50%)", zIndex:11000, background:UI.ink, color:"#07080a", padding:"11px 16px", borderRadius:"30px", maxWidth:"calc(100% - 32px)", textAlign:"center", animation:"fadeIn .2s ease", ...body({ fontSize:"13px", fontWeight:600 }) }}>{msg}</div>;
+}
 
 export default function App() {
   const [tab,setTab] = useState("today");
@@ -1644,37 +1894,41 @@ export default function App() {
   const scheduled = getDayPlan();
   const scheduledLabel = scheduled.type==="lift" ? (scheduled.split==="A"?"ARMS/CHEST":"LEGS/BACK") : "FLEX";
 
-  // ── Persisted state — survives app close, auto-resets at midnight ──
+  // ── Persisted state: survives app close, auto-resets at midnight ──
   const [dailyChecked, setDailyChecked] = usePersisted("daily", {});
   const [rehabChecked, setRehabChecked] = usePersisted("rehab", {});
   const [stackChecked, setStackChecked] = usePersisted("stack", {});
   const [liftChecked,  setLiftChecked]  = usePersisted("lift",  {});
   const [flexChecked,  setFlexChecked]  = usePersisted("flex",  {});
+  const [addons, setAddons] = usePersisted("addons", []);
+  const [addonChecked, setAddonChecked] = usePersisted("addonChecked", {});
   const [timerStates,  setTimerStates]  = usePersisted("timers",
     SNACK_CONFIG.reduce((acc,cfg)=>({...acc,[cfg.id]:{timeLeft:cfg.duration,running:false,done:false}}),{})
   );
-  const [rehabOpen, setRehabOpen] = useState(false);
   const [prWeights, setPRWeights] = usePR();
-  const [extrasChecked, setExtrasChecked] = usePersisted("extras", {});
-  const [extrasOpen, setExtrasOpen] = useState(null);
-  const [bonusChecked, setBonusChecked] = usePersisted("bonus", {});
-  const [bonusOpen, setBonusOpen] = useState(null);
+  const [custom, setCustom] = useStoredJSON(CUSTOM_KEY, []);
+  const [overrides, setOverrides] = useStoredJSON(OVERRIDE_KEY, {});
+  const [open, setOpen] = useState({ rehab:false });
+  const [sheet, setSheet] = useState(null);
+  const [toastMsg, setToastMsg] = useState("");
+  const toastT = useRef(null);
+  const toast = msg => { setToastMsg(msg); clearTimeout(toastT.current); toastT.current = setTimeout(()=>setToastMsg(""), 2200); };
   const [demo, setDemo] = useState(null);
   const openDemo = useMemo(() => (name, color) => setDemo({ name, color }), []);
+  const [guided, setGuided] = useState(false);
   const [showCinematic, setShowCinematic] = useState(false);
   const [cinematicData, setCinematicData] = useState(null);
   const [showRPE, setShowRPE] = useState(false);
   const coachPulse = useCoachPulse();
   const [pulseDismissed, setPulseDismissed] = useState(false);
-  const [theme, setTheme] = useState(()=>localStorage.getItem("cw-theme")||"black");
-  useEffect(()=>localStorage.setItem("cw-theme",theme),[theme]);
+  const [theme, setTheme] = useState(()=>{ try { return localStorage.getItem("cw-theme")||"black"; } catch { return "black"; } });
+  useEffect(()=>{ try { localStorage.setItem("cw-theme",theme); } catch {} },[theme]);
   const handleWorkoutComplete = (data) => { setCinematicData(data); setShowCinematic(true); };
   const handleCinematicDone = () => { setShowCinematic(false); setShowRPE(true); };
   const handleRPE = (val) => {
     if (val > 0) {
       const d = new Date();
-      const key = `cw-rpe-${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
-      try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+      try { localStorage.setItem(`cw-rpe-${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`, JSON.stringify(val)); } catch {}
     }
     setShowRPE(false);
   };
@@ -1683,196 +1937,276 @@ export default function App() {
     if (coachPulse?.dismissKey) { try { localStorage.setItem(coachPulse.dismissKey,"1"); } catch {} }
   };
 
+  // ── Library: built-in moves plus your own ──
+  const customByName = useMemo(()=>Object.fromEntries(custom.map(e=>[e.name, e])), [custom]);
+  const library = useMemo(()=>[...custom, ...LIBRARY], [custom]);
+  const findEx = name => customByName[name] || LIB_INDEX[name] || EX_INDEX[name];
+
+  // ── HIIT (unchanged) ──
   const [impactMode, setImpactMode] = usePersisted("impactMode", "high");
   const [hiitSwaps, setHiitSwaps] = usePersisted("hiitSwaps", {});
   const hiitExercises = useMemo(()=>dealHiit(impactMode).map((g,si)=>g.map((ex,ei)=>hiitSwaps[`${impactMode}-${si}-${ei}`]||ex)), [impactMode, hiitSwaps]);
   const hiitSpare = [...AEROBIC_POOL, ...LOW_IMPACT_POOL].filter(n=>!hiitExercises.flat().includes(n));
   const swapHiit = (si, ei, name) => setHiitSwaps(s=>({ ...s, [`${impactMode}-${si}-${ei}`]: name }));
 
-  // Lift: base seeded picks + swap overrides
+  // ── Lift: seeded picks, each slot swappable to anything ──
   const baseLiftPicks = useMemo(()=>{
     if(day.type!=="lift") return null;
     return pickBalanced(day.split==="A"?LIFTING_A:LIFTING_B,"lift"+day.split);
   },[day]);
   const [liftSwaps, setLiftSwaps] = usePersisted("liftSwaps", {});
-  const stableLiftData = useMemo(()=>{
+  const liftData = useMemo(()=>{
     if(!baseLiftPicks) return null;
     const pool = day.split==="A"?LIFTING_A:LIFTING_B;
     const exercises = baseLiftPicks.map((ex,i)=>{
       const n = liftSwaps[`${day.split}-${i}`];
       if(!n) return ex;
+      if(typeof n==="string") { const f = findEx(n); return f ? { ...f, cat:ex.cat } : ex; }
       const opts = pool.exercises.filter(e=>e.cat===ex.cat);
-      if(typeof n==="string") return opts.find(e=>e.name===n)||ex;
-      const base = opts.findIndex(e=>e.name===ex.name);
-      return opts[(base+n)%opts.length];
+      return opts[(opts.findIndex(e=>e.name===ex.name)+n)%opts.length];
     });
     return { ...pool, exercises, pool:pool.exercises };
-  },[baseLiftPicks,liftSwaps,day]);
+  },[baseLiftPicks,liftSwaps,day,customByName]);
+  const splitLiftChecked = liftChecked[day.split]||{};
+  const setSplitLiftChecked = c=>setLiftChecked(f=>({...f,[day.split]:typeof c==="function"?c(f[day.split]||{}):c}));
+  const chooseLift = (i,name)=>{
+    setLiftSwaps(s=>({...s,[`${day.split}-${i}`]:name}));
+    setLiftChecked(f=>{const pc={...(f[day.split]||{})};delete pc[i];return{...f,[day.split]:pc};});
+    setAddons(a=>a.filter(n=>n!==name));
+  };
 
-  // Flex: base seeded picks + swap overrides
-  const [baseFlexPicks] = useState(()=>
-    Object.fromEntries(Object.values(FLEX_POOLS).map(p=>[p.id, pick(p.exercises,5,p.id)]))
-  );
+  // ── Flex: seeded picks, each swappable to anything ──
+  const [baseFlexPicks] = useState(()=>Object.fromEntries(Object.values(FLEX_POOLS).map(p=>[p.id, pick(p.exercises,5,p.id)])));
   const [flexSwaps, setFlexSwaps] = usePersisted("flexSwaps", {});
   const flexExercises = useMemo(()=>
     Object.fromEntries(Object.entries(baseFlexPicks).map(([pid,baseExs])=>{
       const pool = FLEX_POOLS[pid];
       return [pid, baseExs.map((ex,i)=>{
-        const n = flexSwaps[`${pid}-${i}`]||0;
+        const n = flexSwaps[`${pid}-${i}`];
         if(!n) return ex;
-        const base = pool.exercises.findIndex(e=>e.name===ex.name);
-        return pool.exercises[(base+n)%pool.exercises.length];
+        if(typeof n==="string") return findEx(n) || ex;
+        return pool.exercises[(pool.exercises.findIndex(e=>e.name===ex.name)+n)%pool.exercises.length];
       })];
     }))
-  ,[baseFlexPicks,flexSwaps]);
+  ,[baseFlexPicks,flexSwaps,customByName]);
+  const chooseFlex = (pid,i,name)=>{
+    setFlexSwaps(s=>({...s,[`${pid}-${i}`]:name}));
+    setFlexChecked(f=>{const pc={...(f[pid]||{})};delete pc[i];return{...f,[pid]:pc};});
+  };
 
-  const clearLiftCheck = i=>setLiftChecked(f=>{const pc={...(f[day.split]||{})};delete pc[i];return{...f,[day.split]:pc};});
-  const swapLift = i=>{const k=`${day.split}-${i}`;setLiftSwaps(s=>({...s,[k]:(typeof s[k]==="number"?s[k]:0)+1}));clearLiftCheck(i);};
-  const chooseLift = (i,name)=>{const k=`${day.split}-${i}`;setLiftSwaps(s=>({...s,[k]:name}));clearLiftCheck(i);};
-  const splitLiftChecked = liftChecked[day.split]||{};
-  const setSplitLiftChecked = c=>setLiftChecked(f=>({...f,[day.split]:typeof c==="function"?c(f[day.split]||{}):c}));
-  const swapFlex = (pid,i)=>{const k=`${pid}-${i}`;setFlexSwaps(s=>({...s,[k]:(s[k]||0)+1}));setFlexChecked(f=>{const pc={...(f[pid]||{})};delete pc[i];return{...f,[pid]:pc};});};
+  // ── Add-ons ──
+  const todayNames = new Set([...(liftData ? liftData.exercises.map(e=>e.name) : []), ...addons]);
+  const inToday = name => todayNames.has(name);
+  const addToToday = name => {
+    if (inToday(name)) { toast(`${name} is already in today's workout`); return; }
+    setAddons(a=>[...a, name]); toast(`${name} added to today`);
+  };
+  const removeAddon = name => { setAddons(a=>a.filter(n=>n!==name)); setAddonChecked(c=>{ const n={...c}; delete n[name]; return n; }); };
 
+  // ── Your own exercises, clips, best weights ──
+  const saveCustom = async (ex, file) => {
+    let media = null;
+    if (file) { const id = `m${Date.now()}`; await mediaDB.put(id, file); media = { id, kind:file.type.startsWith("video")?"video":"image" }; }
+    setCustom(list=>[{ ...ex, custom:true, source:"Your exercise", media }, ...list]);
+    setSheet(null); toast(`Saved ${ex.name} to your library`); setDemo({ name:ex.name, color:BODY_COLOR[ex.body[0]] || C.yellow });
+  };
+  const setOwnClip = async (name, file) => {
+    const id = `m${Date.now()}`;
+    await mediaDB.put(id, file);
+    const prev = overrides[name]; if (prev) mediaDB.del(prev.id).catch(()=>{});
+    setOverrides(o=>({ ...o, [name]:{ id, kind:file.type.startsWith("video")?"video":"image" } }));
+    toast("Your clip is now the demo");
+  };
+  const clearOwnClip = name => {
+    const prev = overrides[name]; if (prev) mediaDB.del(prev.id).catch(()=>{});
+    setOverrides(o=>{ const n={...o}; delete n[name]; return n; }); toast("Back to the original demo");
+  };
+  const deleteCustom = name => {
+    const e = customByName[name]; if (e?.media) mediaDB.del(e.media.id).catch(()=>{});
+    setCustom(list=>list.filter(x=>x.name!==name)); removeAddon(name); setDemo(null); toast(`Deleted ${name}`);
+  };
+  const setPR = (name, lbs) => { setPRWeights(p=>({ ...p, [name]:lbs })); toast(`Best weight saved: ${lbs} lb`); };
+  const restoreBackup = d => {
+    setCustom(list=>{ const have = new Set(list.map(e=>e.name)); return [...list, ...(d.custom||[]).filter(e=>!have.has(e.name))]; });
+    setOverrides(o=>({ ...(d.overrides||{}), ...o }));
+    setPRWeights(p=>({ ...(d.prWeights||{}), ...p }));
+  };
+  const appCtx = { findEx, overrides, prWeights, inToday, addToToday:n=>{ addToToday(n); setDemo(null); }, setOwnClip, clearOwnClip, deleteCustom, setPR };
 
-  const totalItems = DAILY_ITEMS.length + SUPPLEMENTS.length + (stableLiftData?stableLiftData.exercises.length:0) + REHAB.length;
-  const totalDone  = Object.values(dailyChecked).filter(Boolean).length + Object.values(stackChecked).filter(Boolean).length + Object.values(splitLiftChecked).filter(Boolean).length + Object.values(rehabChecked).filter(Boolean).length;
-  const overallPct = Math.round((totalDone/totalItems)*100);
+  // ── Today's plan and progress ──
+  const accent = day.type==="lift" ? (day.split==="A"?C.yellow:C.teal) : day.isWeekend ? C.orange : C.purple;
+  const title = day.type==="lift" ? (day.split==="A"?["Arms","Chest"]:["Legs","Back"]) : day.isWeekend ? ["Flex","Day"] : ["Yoga","Core"];
+  const flexPoolIds = day.type==="flex" ? (day.isWeekend ? Object.keys(FLEX_POOLS) : ["core"]) : [];
+  const flexTotals = flexPoolIds.map(pid=>({ pid, done:Object.values(flexChecked[pid]||{}).filter(Boolean).length }));
+  const workTotal = (liftData ? liftData.exercises.length : 0) + addons.length + REHAB.length
+    + (day.type==="flex" ? (day.isWeekend ? 5*Math.max(1, flexTotals.filter(t=>t.done>0).length) : 5) : 0);
+  const workDone = Object.values(splitLiftChecked).filter(Boolean).length + addons.filter(n=>addonChecked[n]).length
+    + Object.values(rehabChecked).filter(Boolean).length + flexTotals.reduce((a,t)=>a+t.done,0);
+  const pct = workTotal ? Math.min(100, Math.round(workDone/workTotal*100)) : 0;
+  const suggestions = suggestionsFor(day.type==="lift" ? day.split : "flex");
 
-  const dayLabel = day.type==="lift"
-    ? (day.split==="A"?"ARMS / CHEST":"LEGS / BACK")
-    : day.isWeekend ? "CHOOSE YOUR DAY" : "YOGA · CORE & STABILITY";
-  const dayColor = day.type==="lift"
-    ? (day.split==="A"?C.yellow:C.teal)
-    : day.isWeekend?C.orange:C.purple;
+  // Guided mode runs the five slots, then any add-ons
+  const guidedData = liftData ? { ...liftData, exercises:[...liftData.exercises, ...addons.map(findEx).filter(Boolean)] } : null;
+  const guidedChecked = { ...splitLiftChecked, ...Object.fromEntries(addons.map((n,j)=>[5+j, !!addonChecked[n]])) };
+  const setGuidedChecked = upd => {
+    const next = typeof upd==="function" ? upd(guidedChecked) : upd;
+    setSplitLiftChecked(Object.fromEntries(Object.entries(next).filter(([k])=>+k<5)));
+    setAddonChecked(c=>({ ...c, ...Object.fromEntries(addons.map((n,j)=>[n, !!next[5+j]])) }));
+  };
+
+  const openSwap = (i) => {
+    const ex = liftData.exercises[i], cat = ex.cat, color = SLOT_COLOR[cat] || accent;
+    setSheet({ kind:"pick", eyebrow:`Slot ${i+1} · ${CAT_LABEL[cat]}`, title:`Swap ${CAT_LABEL[cat]}`, sub:<>Replacing <b>{ex.name}</b></>, color,
+      primary:{ label:CAT_LABEL[cat].toUpperCase(), names:(day.split==="A"?LIFTING_A:LIFTING_B).exercises.filter(e=>e.cat===cat).map(e=>e.name) },
+      onPick:name=>{ chooseLift(i,name); setSheet(null); toast(name===ex.name ? `Kept ${name}` : `Swapped in ${name}`); } });
+  };
+  const openFlexSwap = (pid, i) => {
+    const pool = FLEX_POOLS[pid], ex = flexExercises[pid][i];
+    setSheet({ kind:"pick", eyebrow:pool.label, title:"Swap exercise", sub:<>Replacing <b>{ex.name}</b></>, color:pool.color,
+      primary:{ label:pool.label, names:pool.exercises.map(e=>e.name) },
+      onPick:name=>{ chooseFlex(pid,i,name); setSheet(null); toast(`Swapped in ${name}`); } });
+  };
+  const openAdd = () => setSheet({ kind:"pick", eyebrow:"Library", title:"Add to today", sub:"Anything you pick joins today's workout as an add-on.", color:accent, primary:null,
+    onPick:name=>{ addToToday(name); setSheet(null); } });
+
+  const bg = theme==="midnight" ? "#0a0e18" : C.bg;
 
   return (
+    <AppCtx.Provider value={appCtx}>
     <DemoContext.Provider value={openDemo}>
       {demo && <DemoViewer name={demo.name} color={demo.color||C.yellow} onClose={()=>setDemo(null)}/>}
       {showCinematic && cinematicData && <SessionCinematic data={cinematicData} onDone={handleCinematicDone}/>}
       {showRPE && <RPECapture onSubmit={handleRPE}/>}
+      {guided && guidedData && <LiftWorkoutMode data={{ ...guidedData, color:accent }} checked={guidedChecked} setChecked={setGuidedChecked} onClose={()=>setGuided(false)} onComplete={()=>handleWorkoutComplete(liftData)}/>}
+      {sheet?.kind==="pick" && <PickerSheet {...sheet} library={library} inUse={todayNames} onClose={()=>setSheet(null)}/>}
+      {sheet?.kind==="new" && <NewExerciseSheet existing={n=>!!findEx(n)} onSave={saveCustom} onClose={()=>setSheet(null)}/>}
+      <Toast msg={toastMsg}/>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Barlow:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
         *{box-sizing:border-box;margin:0;padding:0;}
-        html,body{background:${theme==="midnight"?"#0a0e18":"#080808"};overflow-x:hidden;width:100%;}
-        ::-webkit-scrollbar{width:3px;}
-        ::-webkit-scrollbar-track{background:#080808;}
+        html,body{background:${bg};overflow-x:hidden;width:100%;}
+        button,input,select,textarea{font:inherit;}
+        button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[role="button"]:focus-visible{outline:2px solid ${C.yellow};outline-offset:2px;}
+        ::-webkit-scrollbar{width:3px;height:0;}
         ::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:3px;}
         @keyframes urgentPulse{from{opacity:1;transform:scale(1);}to{opacity:0.72;transform:scale(0.95);}}
         @keyframes cardIn{from{opacity:0;transform:translateY(10px) scale(0.98);}to{opacity:1;transform:translateY(0) scale(1);}}
         @keyframes burst{0%{transform:scale(0.5);opacity:0.8;}100%{transform:scale(2.5);opacity:0;}}
         @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
         @keyframes musclePulse{0%,100%{opacity:0.6;}50%{opacity:1;}}
-        ::-webkit-scrollbar:horizontal{height:0;}
+        @keyframes sheetRise{from{transform:translateY(40px);opacity:0;}to{transform:none;opacity:1;}}
+        @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;}}
       `}</style>
-      <div style={{ background:theme==="midnight"?"#0a0e18":C.bg, minHeight:"100vh", maxWidth:"480px", margin:"0 auto", paddingBottom:"80px", overflowX:"hidden" }}>
+      <div style={{ minHeight:"100vh", maxWidth:"480px", margin:"0 auto", padding:"0 16px 120px", overflowX:"hidden", color:UI.ink,
+        background:tab==="today" ? `radial-gradient(120% 340px at 50% -60px, ${accent}26, transparent 70%), ${bg}` : bg }}>
 
-        <div style={{ padding:"calc(env(safe-area-inset-top) + 20px) 20px 16px", borderBottom:`1px solid ${C.dim}`, position:"relative" }}>
-          <p style={mono({ fontSize:"11px", color:"#666", letterSpacing:"0.2em", marginBottom:"6px" })}>{today.toUpperCase()}</p>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-            <div>
-              <p style={cond({ fontSize:"12px", color:C.soft, letterSpacing:"0.4em", marginBottom:"2px" })}>CHARLIE'S</p>
-              <h1 style={cond({ fontSize:"46px", color:C.yellow, lineHeight:1, letterSpacing:"0.04em", textShadow:`0 0 40px ${C.yellow}44` })}>WELLNESS</h1>
-              <div style={mono({ fontSize:"10px", color:dayColor, letterSpacing:"0.1em", marginTop:"6px" })}>{dayLabel}</div>
+        {tab==="today" && <>
+          <TodayHeader title={title} accent={accent} pct={pct} eyebrow={`${today}${day.type==="lift"?"":" · flex"}`} override={dayOverride} scheduledLabel={scheduledLabel}
+            onSetOverride={setDayOverride} theme={theme} onTheme={()=>setTheme(t=>t==="midnight"?"black":"midnight")}/>
+          {!pulseDismissed && coachPulse && <div style={{ marginTop:"16px" }}><CoachPulseBrief pulse={coachPulse} onDismiss={dismissPulse}/></div>}
+
+          {liftData && <>
+            <SectionHead title="Lift" aside={`${liftData.exercises.length} slots${addons.length?` + ${addons.length} add-on${addons.length>1?"s":""}`:""}`}/>
+            <ScienceCue category={liftData.categories[getDaySeed("cue") % liftData.categories.length]} color={accent}/>
+            <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
+              {liftData.exercises.map((ex,i)=>{
+                const color = SLOT_COLOR[ex.cat] || accent;
+                return <ExCard key={i} ex={ex} color={color} done={!!splitLiftChecked[i]} onTap={()=>openSwap(i)}
+                  tag={<Tag color={color}>{CAT_LABEL[ex.cat]}</Tag>} hint={<Tag color={UI.ink3}>· tap to swap</Tag>}
+                  right={<CheckBtn on={!!splitLiftChecked[i]} color={color} label={ex.name} onToggle={()=>setSplitLiftChecked(c=>({...c,[i]:!c[i]}))}/>}/>;
+              })}
             </div>
-            <ArcRing pct={overallPct} color={overallPct===100?C.yellow:C.teal} size={80}/>
+          </>}
+
+          {day.type==="flex" && <>
+            <SectionHead title={day.isWeekend ? "Choose your day" : "Core & stability"} aside="tap a move to swap"/>
+            {day.isWeekend && <p style={body({ fontSize:"14px", color:UI.ink2, margin:"-2px 0 10px", lineHeight:1.5 })}>Rest, yoga, or open any set below. Full rest is a real option: sleep, eat well, let it rebuild.</p>}
+            {!day.isWeekend && <p style={body({ fontSize:"14px", color:UI.ink2, margin:"-2px 0 10px", lineHeight:1.5 })}>Yoga today, plus this core set.</p>}
+            {flexPoolIds.map(pid=>{
+              const pool = FLEX_POOLS[pid], exs = flexExercises[pid], chk = flexChecked[pid]||{};
+              const done = exs.filter((_,i)=>chk[i]).length;
+              return (
+                <Fold key={pid} eyebrow={pool.label} title={`${exs.length} moves`} color={pool.color} count={`${done}/${exs.length}`} open={!!open[pid] || !day.isWeekend} onToggle={()=>setOpen(o=>({ ...o, [pid]:!o[pid] }))}>
+                  {exs.map((ex,i)=><ExCard key={i} ex={ex} color={pool.color} done={!!chk[i]} onTap={()=>openFlexSwap(pid,i)}
+                    right={<CheckBtn on={!!chk[i]} color={pool.color} label={ex.name} onToggle={()=>setFlexChecked(f=>({ ...f, [pid]:{ ...(f[pid]||{}), [i]:!(f[pid]||{})[i] } }))}/>}/>)}
+                </Fold>
+              );
+            })}
+          </>}
+
+          {addons.length>0 && <>
+            {!liftData && <SectionHead title="Add-ons" aside={`${addons.length} added`}/>}
+            <div style={{ display:"flex", flexDirection:"column", gap:"8px", marginTop:liftData?"8px":0 }}>
+              {addons.map(n=>{
+                const ex = findEx(n); if (!ex) return null;
+                const color = exColor(ex);
+                return <ExCard key={n} ex={ex} color={color} done={!!addonChecked[n]} onTap={()=>openDemo(n, color)} tag={<Tag color={C.yellow}>Add-on</Tag>}
+                  right={<><CheckBtn on={!!addonChecked[n]} color={color} label={n} onToggle={()=>setAddonChecked(c=>({ ...c, [n]:!c[n] }))}/><IconBtn onClick={()=>removeAddon(n)} label={`Remove ${n}`}><XIcon/></IconBtn></>}/>;
+              })}
+            </div>
+          </>}
+
+          <div style={{ display:"flex", flexDirection:"column", gap:"8px", marginTop:"10px" }}>
+            <button onClick={openAdd} style={btnStyle("ghost", accent)}>+ Add any exercise</button>
+            {liftData && <button onClick={()=>setGuided(true)} style={btnStyle("solid", accent)}>▶ Start guided workout</button>}
           </div>
-          <button onClick={()=>setTheme(t=>t==="midnight"?"black":"midnight")} style={{ position:"absolute", top:"calc(env(safe-area-inset-top) + 20px)", right:"20px", background:"transparent", border:"none", cursor:"pointer", fontSize:"16px", opacity:0.4, transition:"opacity 0.2s" }} title="Toggle theme">{theme==="midnight"?"☀":"☽"}</button>
-        </div>
 
-        <div style={{ display:"flex", gap:"6px", padding:"12px 20px", borderBottom:`1px solid ${C.dim}`, overflowX:"auto" }}>
-          {TABS.map(t=><Pill key={t.id} label={t.label} active={tab===t.id} onClick={()=>setTab(t.id)}/>)}
-        </div>
+          <SectionHead title="Add-ons for today" aside="from your extras"/>
+          <SuggestRail names={suggestions} onAdd={addToToday}/>
 
-        <div style={{ padding:"16px 20px" }}>
-          {tab==="today" && <>
-            {!pulseDismissed && coachPulse && <CoachPulseBrief pulse={coachPulse} onDismiss={dismissPulse}/>}
-            <WorkoutPicker override={dayOverride} onSet={setDayOverride} scheduledLabel={scheduledLabel}/>
-            <DailyWisdom/>
-            <DailyLog checked={dailyChecked} setChecked={setDailyChecked}/>
-            <RehabSection checked={rehabChecked} setChecked={setRehabChecked} open={rehabOpen} setOpen={setRehabOpen}/>
-            {day.type==="lift" && stableLiftData && <LiftingSection data={stableLiftData} checked={splitLiftChecked} setChecked={setSplitLiftChecked} onSwap={swapLift} onChoose={chooseLift} onComplete={()=>handleWorkoutComplete(stableLiftData)}/>}
-            {day.type==="flex" && !day.isWeekend && <WedFlexDay flexChecked={flexChecked} setFlexChecked={setFlexChecked} flexExercises={flexExercises} onFlexSwap={swapFlex}/>}
-            {day.type==="flex" && day.isWeekend  && <WeekendFlexDay flexChecked={flexChecked} setFlexChecked={setFlexChecked} flexExercises={flexExercises} onFlexSwap={swapFlex}/>}
-          </>}
+          <div style={{ marginTop:"18px" }}>
+            <Fold eyebrow="Daily · before lifting" title="Shoulder rehab" color={C.purple} count={`${Object.values(rehabChecked).filter(Boolean).length}/${REHAB.length}`} open={open.rehab} onToggle={()=>setOpen(o=>({ ...o, rehab:!o.rehab }))}>
+              {REHAB.map((ex,i)=><ExCard key={i} ex={LIB_INDEX[ex.name]||ex} color={C.purple} done={!!rehabChecked[i]} onTap={()=>openDemo(ex.name, C.purple)}
+                right={<CheckBtn on={!!rehabChecked[i]} color={C.purple} label={ex.name} onToggle={()=>setRehabChecked(c=>({ ...c, [i]:!c[i] }))}/>}/>)}
+            </Fold>
+          </div>
+        </>}
 
-          {tab==="hiit" && <>
-            <div style={{ marginBottom:"20px" }}>
-              <p style={mono({ fontSize:"10px", letterSpacing:"0.2em", color:C.yellow, textTransform:"uppercase", marginBottom:"4px" })}>HIIT SNACKS</p>
-              <h2 style={cond({ fontSize:"32px", color:C.yellow, textShadow:`0 0 30px ${C.yellow}55` })}>3 MICRO-SESSIONS</h2>
-              <p style={body({ fontSize:"14px", color:"#888", marginTop:"8px", lineHeight:1.6 })}>{impactMode==="low"?"Low-impact only":impactMode==="mixed"?"High + low mixed":"High-impact aerobic"} · unique per snack · 1 min each</p>
-              <p style={mono({ fontSize:"11px", color:"#555", marginTop:"6px" })}>Tap ⛶ for fullscreen mode</p>
-            </div>
-            <ImpactPicker mode={impactMode} onSet={setImpactMode}/>
-            {SNACK_CONFIG.map((cfg,i)=>(
-              <SnackCard key={cfg.id} config={cfg} exercises={hiitExercises[i]} options={hiitSpare} onSwap={(ei,name)=>swapHiit(i,ei,name)}
-                timerState={timerStates[cfg.id]}
-                setTimerState={updater=>setTimerStates(s=>({...s,[cfg.id]:typeof updater==="function"?updater(s[cfg.id]):updater}))}
-              />
-            ))}
-          </>}
-
-          {tab==="lift" && <>
-            <WorkoutPicker override={dayOverride} onSet={setDayOverride} scheduledLabel={scheduledLabel}/>
-            {day.type==="lift"&&stableLiftData
-              ? <LiftingSection data={stableLiftData} checked={splitLiftChecked} setChecked={setSplitLiftChecked} onSwap={swapLift} onChoose={chooseLift} onComplete={()=>handleWorkoutComplete(stableLiftData)}/>
-              : <div style={cardBase(C.border)}>
-                  <p style={mono({ fontSize:"10px", letterSpacing:"0.2em", color:C.muted, textTransform:"uppercase", marginBottom:"4px" })}>LIFTING</p>
-                  <h2 style={cond({ fontSize:"22px", color:C.muted })}>{day.isWeekend?"FLEX DAY":"YOGA / CORE DAY"}</h2>
-                  <p style={body({ fontSize:"14px", color:"#777", marginTop:"8px" })}>No lifting today. Check the TODAY tab for your options.</p>
-                </div>
-            }
-            <RehabSection checked={rehabChecked} setChecked={setRehabChecked} open={rehabOpen} setOpen={setRehabOpen}/>
-          </>}
-
-          {tab==="rehab" && <RehabSection checked={rehabChecked} setChecked={setRehabChecked} open={rehabOpen} setOpen={setRehabOpen}/>}
-
-          {tab==="extras" && <>
-            <div style={{ marginBottom:"20px" }}>
-              <p style={mono({ fontSize:"10px", letterSpacing:"0.2em", color:C.orange, textTransform:"uppercase", marginBottom:"4px" })}>SUPPLEMENTAL WORK</p>
-              <h2 style={cond({ fontSize:"32px", color:C.orange, textShadow:`0 0 30px ${C.orange}55` })}>BODY EXTRAS</h2>
-              <p style={body({ fontSize:"14px", color:"#888", marginTop:"8px", lineHeight:1.6 })}>The 15 minutes that compound over years. Add any to any day — all shoulder safe.</p>
-            </div>
-            {Object.values(EXTRAS_POOLS).map(pool=>(
-              <ExtrasPoolCard key={pool.id}
-                pool={pool}
-                checked={extrasChecked[pool.id]||{}}
-                setChecked={c=>setExtrasChecked(f=>({...f,[pool.id]:typeof c==="function"?c(f[pool.id]||{}):c}))}
-                open={extrasOpen===pool.id}
-                onToggle={()=>setExtrasOpen(o=>o===pool.id?null:pool.id)}
-              />
-            ))}
-
-            <div style={{ margin:"28px 0 20px" }}>
-              <p style={mono({ fontSize:"10px", letterSpacing:"0.2em", color:C.purple, textTransform:"uppercase", marginBottom:"4px" })}>ANYTIME · NO SCHEDULE</p>
-              <h2 style={cond({ fontSize:"32px", color:C.purple, textShadow:`0 0 30px ${C.purple}55` })}>BONUS LIBRARY</h2>
-              <p style={body({ fontSize:"14px", color:"#888", marginTop:"8px", lineHeight:1.6 })}>Curated extra workouts — dip in whenever you want, no daily requirement.</p>
-            </div>
-            {Object.values(BONUS_POOLS).map(pool=>(
-              <ExtrasPoolCard key={pool.id}
-                pool={pool}
-                checked={bonusChecked[pool.id]||{}}
-                setChecked={c=>setBonusChecked(f=>({...f,[pool.id]:typeof c==="function"?c(f[pool.id]||{}):c}))}
-                open={bonusOpen===pool.id}
-                onToggle={()=>setBonusOpen(o=>o===pool.id?null:pool.id)}
-              />
-            ))}
-          </>}
-
-          {tab==="stack" && <>
-            <PRProofBoard prWeights={prWeights}/>
-            <SupplementsSection checked={stackChecked} setChecked={setStackChecked}/>
-          </>}
-        </div>
-
-        <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:"480px", background:"rgba(8,8,8,0.96)", backdropFilter:"blur(16px)", borderTop:`1px solid ${C.dim}`, display:"flex", justifyContent:"space-around", padding:"10px 0 16px" }}>
-          {TABS.map(t=>(
-            <button key={t.id} onClick={()=>setTab(t.id)} style={{ background:"transparent", border:"none", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:"4px" }}>
-              <div style={{ width:"4px", height:"4px", borderRadius:"50%", background:tab===t.id?C.yellow:"transparent", boxShadow:tab===t.id?`0 0 6px ${C.yellow}`:"none", transition:"all 0.2s" }}/>
-              <span style={mono({ fontSize:"10px", letterSpacing:"0.1em", color:tab===t.id?C.yellow:C.muted })}>{t.label}</span>
-            </button>
+        {tab==="hiit" && <div style={{ paddingTop:"calc(env(safe-area-inset-top) + 18px)" }}>
+          <div style={{ marginBottom:"20px" }}>
+            <p style={mono({ fontSize:"10px", letterSpacing:"0.2em", color:C.yellow, textTransform:"uppercase", marginBottom:"4px" })}>HIIT SNACKS</p>
+            <h2 style={cond({ fontSize:"32px", color:C.yellow, textShadow:`0 0 30px ${C.yellow}55` })}>3 MICRO-SESSIONS</h2>
+            <p style={body({ fontSize:"14px", color:"#888", marginTop:"8px", lineHeight:1.6 })}>{impactMode==="low"?"Low-impact only":impactMode==="mixed"?"High + low mixed":"High-impact aerobic"} · unique per snack · 1 min each</p>
+            <p style={mono({ fontSize:"11px", color:"#555", marginTop:"6px" })}>Tap ⛶ for fullscreen mode</p>
+          </div>
+          <ImpactPicker mode={impactMode} onSet={setImpactMode}/>
+          {SNACK_CONFIG.map((cfg,i)=>(
+            <SnackCard key={cfg.id} config={cfg} exercises={hiitExercises[i]} options={hiitSpare} onSwap={(ei,name)=>swapHiit(i,ei,name)}
+              timerState={timerStates[cfg.id]}
+              setTimerState={updater=>setTimerStates(s=>({...s,[cfg.id]:typeof updater==="function"?updater(s[cfg.id]):updater}))}
+            />
           ))}
-        </div>
+        </div>}
+
+        {tab==="library" && <LibraryView library={library} onNew={()=>setSheet({ kind:"new" })}/>}
+
+        {tab==="progress" && <>
+          <header style={{ paddingTop:"calc(env(safe-area-inset-top) + 18px)", paddingBottom:"4px" }}>
+            <Tag color={UI.ink3}>Streaks, records, effort</Tag>
+            <h1 style={cond({ fontSize:"44px", color:C.teal, textShadow:`0 0 30px ${C.teal}66`, marginTop:"4px" })}>Progress</h1>
+          </header>
+          <SectionHead title="12-week momentum" aside="active days / week"/>
+          <MomentumChart/>
+          <SectionHead title="This week"/>
+          <WeekStats/>
+          <SectionHead title="Personal records" aside="log in any exercise"/>
+          <PRProofBoard prWeights={prWeights}/>
+          <SectionHead title="Backup"/>
+          <BackupCard custom={custom} overrides={overrides} prWeights={prWeights} onRestore={restoreBackup} toast={toast}/>
+        </>}
+
+        {tab==="habits" && <>
+          <header style={{ paddingTop:"calc(env(safe-area-inset-top) + 18px)", paddingBottom:"14px" }}>
+            <Tag color={UI.ink3}>Every day</Tag>
+            <h1 style={cond({ fontSize:"44px", color:C.blue, textShadow:`0 0 30px ${C.blue}66`, marginTop:"4px" })}>Habits</h1>
+          </header>
+          <DailyWisdom/>
+          <DailyLog checked={dailyChecked} setChecked={setDailyChecked}/>
+          <SupplementsSection checked={stackChecked} setChecked={setStackChecked}/>
+        </>}
       </div>
+      <TabBar tab={tab} onTab={t=>{ setTab(t); window.scrollTo(0,0); }}/>
     </DemoContext.Provider>
+    </AppCtx.Provider>
   );
 }
